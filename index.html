@@ -176,6 +176,10 @@
 </head>
 <body>
 
+    <audio id="game-music" loop>
+        <source src="proto_maze.mp3" type="audio/mpeg">
+        Twoja przeglądarka nie obsługuje elementu audio.
+    </audio>
     <div id="visor-overlay"></div>
     <div id="scanlines"></div>
     <div id="crosshair"></div>
@@ -262,11 +266,10 @@
         import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
 
         const CONFIG = {
-            DEV_SHOW_MINIMAP: true, 
+            DEV_SHOW_MINIMAP: false, 
             wallHeight: 3.5,
             cellSize: 3.0,
             walkSpeed: 6.0,
-            // runSpeed: 11.0, <-- USUNIĘTE
             playerRadius: 0.5,
             jumpForce: 6.0,
             gravity: 15.0,
@@ -276,19 +279,18 @@
             // Konfiguracja wrogów
             enemyStartLevel: 5,  
             enemyCountBase: 2,
-            dodgeDuration: 0.4, // SKRÓCONY CZAS TRWANIA UNIKU
+            dodgeDuration: 0.4, 
             dodgeCooldown: 3.0,
             
-            // DODANE: Konfiguracja Dash
-            dashForce: 15.0, // SIŁA ODRZUTU PODCZAS DASH
-            dashTime: 0.2, // CZAS TRWANIA FIZYCZNEGO ODRZUTU
+            // Konfiguracja Dash
+            dashForce: 15.0, 
+            dashTime: 0.2, 
             
             // Konfiguracja dziur
             HOLE_CHANCE: 0.08, 
             FALL_HEIGHT: -5.0 
         };
 
-        // DODANA TREŚĆ INFO
         const LORE_TEXT = `
         <p>> SYSTEM STATUS: CRITICAL.</p>
         <p>> UNIT: 734 (TY). OBJECTIVE: <span style="color:#ff0040">UNKNOWN</span>. LAST DIRECTIVE: <span style="color:#ff0040;">UNKNOWN</span>.</p>
@@ -301,12 +303,10 @@
         <p> "Phase Shift" [<kbd>F</kbd>] </p>
         <p>> END OF TRANSMISSION.</p>
         `;
-        // KONIEC LORE
 
         // --- ZMIENNE ---
         let scene, camera, renderer, controls;
         let walls = [], enemies = [], goalObj = null;
-        // USUNIĘTO isRunning
         let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
         let canJump = false; 
         let velocityY = 0;
@@ -322,7 +322,10 @@
         // DODANE: Dash variables
         let dashVector = new THREE.Vector3();
         let dashTimer = 0;
-        // KONIEC DODANE
+
+        // DODANE: Audio
+        let gameMusic = null; 
+        // KONIEC DODANEGO
 
         const abilityFill = document.getElementById('ability-fill');
         const abilityText = document.getElementById('ability-text');
@@ -340,15 +343,12 @@
         const minimapCanvas = document.getElementById('minimap');
         const minimapCtx = minimapCanvas.getContext('2d');
 
-        // DODANA FUNKCJA FORMATOWANIA CZASU
         function formatTime(ms) {
             const minutes = Math.floor(ms / 60000);
             const seconds = Math.floor((ms % 60000) / 1000);
             const milliseconds = ms % 1000;
             return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(milliseconds).padStart(3, '0')}`;
         }
-
-        // if(CONFIG.DEV_SHOW_MINIMAP) document.getElementById('minimap-container').style.display = 'block'; <-- USUNIĘTE, PRZENIESIONE DO init()
 
         init();
         animate();
@@ -409,19 +409,39 @@
 
             controls = new PointerLockControls(camera, document.body);
             
-            // ZMODYFIKOWANY BLOK - STARTOWANIE TIMERA
+            // ZMODYFIKOWANY BLOK - STARTOWANIE TIMERA I MUZYKI (W ŚRODKU)
             const instructions = document.getElementById('center-info');
+            gameMusic = document.getElementById('game-music'); 
+
             instructions.addEventListener('click', () => {
                 controls.lock();
-                if (!isGameRunning) { // Start timer on first lock
+                if (!isGameRunning) { 
                     gameStartTime = performance.now();
                     isGameRunning = true;
+                    
+                    // Uruchomienie muzyki po pierwszym kliknięciu
+                    if (gameMusic) {
+                        gameMusic.volume = 0.4; 
+                        gameMusic.play().catch(error => {
+                            console.warn("Automatyczne odtwarzanie zablokowane.");
+                        });
+                    }
                 }
             });
             // KONIEC MODYFIKACJI
-            
-            controls.addEventListener('lock', () => instructions.classList.add('hidden'));
-            controls.addEventListener('unlock', () => instructions.classList.remove('hidden'));
+
+            // ZMODYFIKOWANY BLOK: OBSŁUGA LOCK/UNLOCK I MUZYKI
+            controls.addEventListener('lock', () => {
+                instructions.classList.add('hidden');
+                // WZNÓW MUZYKĘ PO POWROCIE Z PAUZY
+                if (gameMusic) gameMusic.play().catch(e => console.log('Music play failed on lock.'));
+            });
+            controls.addEventListener('unlock', () => {
+                instructions.classList.remove('hidden');
+                // ZATRZYMAJ MUZYKĘ PO WEJŚCIU W PAUZĘ
+                if (gameMusic) gameMusic.pause();
+            });
+            // KONIEC ZMODYFIKOWANEGO BLOKU
 
             const onKeyDown = (event) => {
                 switch (event.code) {
@@ -429,7 +449,6 @@
                     case 'ArrowLeft': case 'KeyA': moveLeft = true; break;
                     case 'ArrowDown': case 'KeyS': moveBackward = true; break;
                     case 'ArrowRight': case 'KeyD': moveRight = true; break;
-                    // case 'ShiftLeft': case 'ShiftRight': isRunning = true; break; <-- USUNIĘTO SPRINT
                     case 'Space': if (canJump) { velocityY = CONFIG.jumpForce; canJump = false; } break;
                     case 'KeyF': tryDodge(); break;
                 }
@@ -440,24 +459,22 @@
                     case 'ArrowLeft': case 'KeyA': moveLeft = false; break;
                     case 'ArrowDown': case 'KeyS': moveBackward = false; break;
                     case 'ArrowRight': case 'KeyD': moveRight = false; break;
-                    // case 'ShiftLeft': case 'ShiftRight': isRunning = false; break; <-- USUNIĘTO SPRINT
                 }
             };
             document.addEventListener('keydown', onKeyDown);
             document.addEventListener('keyup', onKeyUp);
             window.addEventListener('resize', onWindowResize);
 
-            // DODANY BLOK - LOGIKA LORE I HIGH SCORE
             // ----- LOGIKA LORE -----
             const loreButton = document.getElementById('lore-button');
             const loreScreen = document.getElementById('lore-screen');
             const loreContent = document.getElementById('lore-content');
             const loreClose = document.getElementById('lore-close-button');
 
-            loreContent.innerHTML = LORE_TEXT; // Wstrzyknij treść
+            loreContent.innerHTML = LORE_TEXT; 
 
             loreButton.addEventListener('click', (e) => {
-                e.stopPropagation(); // Ważne: powstrzymaj #center-info od przejęcia klika
+                e.stopPropagation(); 
                 loreScreen.classList.remove('hidden');
             });
 
@@ -467,9 +484,8 @@
             
             // ----- WCZYTANIE HIGH SCORE -----
             document.getElementById('highscore-display').innerText = `HIGH: ZONE ${highScore}`;
-            // KONIEC DODANEGO BLOKU
             
-            // DODANE: LOGIKA MINIMAPY/LOGO (AKTUALIZACJA)
+            // LOGIKA MINIMAPY/LOGO
             const minimapContainer = document.getElementById('minimap-container');
             const logoContainer = document.getElementById('logo-container');
             if (CONFIG.DEV_SHOW_MINIMAP) {
@@ -479,23 +495,19 @@
                 minimapContainer.style.display = 'none';
                 logoContainer.style.display = 'block';
             }
-            // KONIEC DODANEJ LOGIKI
 
             regenerateLevel();
         }
         
-        // --- NOWA FUNKCJA DLA DZIUR ---
         function checkFloorPresence(px, pz) {
-            // Zamieniamy pozycje świata na indeksy komórek w siatce
             const cellX = Math.round(px / CONFIG.cellSize);
             const cellZ = Math.round(pz / CONFIG.cellSize);
 
             if (cellX < 0 || cellX >= mazeWidth || cellZ < 0 || cellZ >= mazeHeight) {
-                return false; // Poza mapą (ściany zewnętrzne)
+                return false; 
             }
             
             const cellType = grid[cellZ][cellX];
-            // Chodliwe komórki to: '.', 'P', 'G', 'E'. Dziura to 'H'.
             return cellType !== '#' && cellType !== 'H'; 
         }
 
@@ -510,11 +522,9 @@
                 // --- LOGIKA DASH/UNIK Z RUCHEM ---
                 dashTimer = CONFIG.dashTime;
                 
-                // Obliczanie kierunku ruchu do Dash:
                 const forwardVec = new THREE.Vector3(); camera.getWorldDirection(forwardVec); forwardVec.y = 0; forwardVec.normalize();
                 const rightVec = new THREE.Vector3().crossVectors(forwardVec, camera.up);
                 
-                // Kierunek na podstawie klawiszy WASD
                 const tempDirection = new THREE.Vector3(
                     Number(moveRight) - Number(moveLeft),
                     0,
@@ -524,15 +534,12 @@
                 dashVector.set(0, 0, 0);
 
                 if (tempDirection.length() > 0) {
-                    // Jeśli gracz się porusza, Dash wykonaj w kierunku ruchu
                     dashVector.addScaledVector(forwardVec, tempDirection.z);
                     dashVector.addScaledVector(rightVec, tempDirection.x);
                     dashVector.normalize().multiplyScalar(CONFIG.dashForce);
                 } else {
-                    // Jeśli gracz stoi, Dash wykonaj w kierunku, w którym patrzy
                     dashVector.copy(forwardVec).multiplyScalar(CONFIG.dashForce);
                 }
-                // --- KONIEC LOGIKI DASH ---
             }
         }
 
@@ -596,7 +603,6 @@
             
             // --- GENEROWANIE DZIUR (H) ---
             for(const {x, y} of emptySpaces) {
-                // Zapobiegamy dziurom w pobliżu startu (3x3) i końca
                 if (x < 3 && y < 3) continue; 
                 if (x === end.x && y === end.y) continue;
                 
@@ -610,7 +616,6 @@
 
             // --- SPAWN PRZECIWNIKÓW (TYLKO OD LVL 5) ---
             if (level >= CONFIG.enemyStartLevel) {
-                // Filtrujemy, żeby wrogowie nie spawnowali się na 'H'
                 emptySpaces = emptySpaces.filter(p => map[p.y][p.x] !== 'H' && !(p.x < 4 && p.y < 4) && !(p.x === end.x && p.y === end.y));
                 const numEnemies = CONFIG.enemyCountBase + Math.floor((level - 4) * 0.5);
                 
@@ -634,30 +639,26 @@
             const wallTex = generateTexture('#000', 'brick');
             const wallMat = new THREE.MeshStandardMaterial({ map: wallTex, roughness: 0.2, metalness: 0.8, emissive: 0x000505 });
             
-            // --- ZMIENIONY BLOK: INDYWIDUALNE PŁYTKI PODŁOGOWE ---
             const floorTex = generateTexture('#000', 'grid');
             const floorMat = new THREE.MeshStandardMaterial({ 
                 map: floorTex, 
                 roughness: 0.5, 
                 metalness: 0.5, 
-                side: THREE.DoubleSide // Widoczna z obu stron
+                side: THREE.DoubleSide 
             });
 
             const floorTileGeo = new THREE.PlaneGeometry(CONFIG.cellSize, CONFIG.cellSize);
-            const floorTileGeoRotated = floorTileGeo.clone().rotateX(-Math.PI / 2); // Rotacja w dół
+            const floorTileGeoRotated = floorTileGeo.clone().rotateX(-Math.PI / 2); 
 
             const fullFloorGeo = new THREE.PlaneGeometry(mazeWidth * CONFIG.cellSize, mazeHeight * CONFIG.cellSize);
             
-            // JEDEN SUFIT DLA CAŁEJ MAPY
             const ceil = new THREE.Mesh(fullFloorGeo, new THREE.MeshBasicMaterial({ color: 0x000000 }));
             ceil.rotation.x = Math.PI / 2;
             ceil.position.set((mazeWidth * CONFIG.cellSize)/2 - CONFIG.cellSize/2, CONFIG.wallHeight, (mazeHeight * CONFIG.cellSize)/2 - CONFIG.cellSize/2);
             scene.add(ceil);
 
             const boxGeo = new THREE.BoxGeometry(CONFIG.cellSize, CONFIG.wallHeight, CONFIG.cellSize);
-            // --- KONIEC ZMIENIONEGO BLOKU ---
             
-            // --- NOWY MODEL WROGA: UNSTABLE CORE ---
             const enemyGeo = new THREE.IcosahedronGeometry(0.5, 0); 
             const enemyMat = new THREE.MeshStandardMaterial({ 
                 color: 0xff0000, 
@@ -679,7 +680,6 @@
                         wall.userData.bbox = new THREE.Box3().setFromObject(wall);
                         walls.push(wall); scene.add(wall);
                     } else if (type === 'P' || type === 'G' || type === 'E' || type === '.') {
-                        // Tworzenie płytki podłogowej
                         const floorTile = new THREE.Mesh(floorTileGeoRotated, floorMat);
                         floorTile.position.set(px, 0, pz);
                         floorTile.receiveShadow = true;
@@ -697,18 +697,15 @@
                             const gLight = new THREE.PointLight(0x00ffff, 3, 8);
                             goalObj.add(gLight); scene.add(goalObj);
                         } else if (type === 'E') {
-                            // Tworzenie "Niestabilnego rdzenia"
                             const enMesh = new THREE.Mesh(enemyGeo, enemyMat);
                             enMesh.position.set(px, 1.5, pz);
                             
-                            // Wewnętrzny rdzeń (wypełniony)
                             const core = new THREE.Mesh(
                                 new THREE.IcosahedronGeometry(0.2, 0),
                                 new THREE.MeshBasicMaterial({ color: 0xffffff })
                             );
                             enMesh.add(core);
 
-                            // Czerwone światło
                             const eLight = new THREE.PointLight(0xff0000, 3, 6);
                             enMesh.add(eLight);
 
@@ -718,13 +715,13 @@
                                 basePos: new THREE.Vector3(px, 1.5, pz),
                                 axis: isX ? 'x' : 'z',
                                 offset: 0,
-                                speed: 3 + Math.random() * 2, // Szybsze niż drony
+                                speed: 3 + Math.random() * 2, 
                                 range: CONFIG.cellSize * 0.4
                             });
                             scene.add(enMesh);
                         }
                     } else if (type === 'H') {
-                        // Dziura - celowo nic nie dodajemy, aby stworzyć lukę
+                        // Dziura - celowo nic nie dodajemy
                     }
                 }
             }
@@ -749,7 +746,7 @@
                     } else if(grid[y][x] === 'G') {
                         minimapCtx.fillStyle = '#0f0'; minimapCtx.fillRect(px, py, cellW, cellH);
                     } else if(grid[y][x] === 'H') {
-                        minimapCtx.fillStyle = '#440000'; // Oznacz dziurę ciemnym kolorem
+                        minimapCtx.fillStyle = '#440000'; 
                         minimapCtx.fillRect(px, py, cellW, cellH);
                     }
                 }
@@ -777,7 +774,6 @@
             playerBox.min.set(position.x - r, position.y - 1.0, position.z - r);
             playerBox.max.set(position.x + r, position.y + 0.5, position.z + r);
             for (let obj of walls) {
-                // Jeśli obiektem jest płytka podłogowa (PlaneGeometry), ignorujemy ją w kolizji poziomej
                 if(obj.geometry.type === 'PlaneGeometry') continue; 
                 if (obj.userData.bbox && playerBox.intersectsBox(obj.userData.bbox)) return true;
             }
@@ -796,12 +792,10 @@
             const delta = (time - prevTime) / 1000;
             prevTime = time;
 
-            // DODANA AKTUALIZACJA TIMERA
             if (isGameRunning && controls.isLocked) {
                 const elapsedTime = time - gameStartTime;
                 document.getElementById('timer-display').innerText = `TIME: ${formatTime(elapsedTime)}`;
             }
-            // KONIEC DODANEGO BLOKU
 
             if (controls.isLocked) {
                 if(isDodging) {
@@ -829,16 +823,13 @@
 
                 // --- LOGIKA WROGÓW ---
                 enemies.forEach(en => {
-                    // Ruch
                     en.offset += en.speed * delta;
                     const offsetVal = Math.sin(en.offset) * en.range;
                     if(en.axis === 'x') en.mesh.position.x = en.basePos.x + offsetVal;
                     else en.mesh.position.z = en.basePos.z + offsetVal;
                     
-                    // ANIMACJA NIESTABILNOŚCI
-                    en.mesh.rotation.y += delta * 4; // Bardzo szybki obrót
+                    en.mesh.rotation.y += delta * 4; 
                     en.mesh.rotation.x += delta * 2;
-                    // Glitch efekt (drganie skali)
                     const jitter = 1 + (Math.random() - 0.5) * 0.3; 
                     en.mesh.scale.setScalar(jitter);
 
@@ -847,18 +838,16 @@
                         const dist = new THREE.Vector2(camera.position.x, camera.position.z)
                                      .distanceTo(new THREE.Vector2(en.mesh.position.x, en.mesh.position.z));
                         if(dist < 1.0) {
-                            // RESET POZIOMU (ALE NIE CAŁEJ GRY)
                             document.getElementById('visor-overlay').style.backgroundColor = 'rgba(255,0,0,0.8)';
                             setTimeout(() => {
                                 document.getElementById('visor-overlay').style.backgroundColor = '';
-                                regenerateLevel(); // Przeładowanie
+                                regenerateLevel(); 
                             }, 100);
                         }
                     }
                 });
 
-                // const actualSpeed = isRunning ? CONFIG.runSpeed : CONFIG.walkSpeed; <-- USUNIĘTE SPRINT
-                const actualSpeed = CONFIG.walkSpeed; // <-- STAŁA PRĘDKOŚĆ
+                const actualSpeed = CONFIG.walkSpeed; 
 
                 direction.z = Number(moveForward) - Number(moveBackward);
                 direction.x = Number(moveRight) - Number(moveLeft);
@@ -875,13 +864,12 @@
                     moveVec.normalize().multiplyScalar(actualSpeed * delta);
                 }
 
-                // --- DODANE: LOGIKA DASH ---
+                // --- LOGIKA DASH ---
                 if (dashTimer > 0) {
                     dashTimer -= delta;
-                    // Dodaj siłę Dash do normalnego ruchu
                     moveVec.addScaledVector(dashVector, delta); 
                 }
-                // --- KONIEC DODANEJ LOGIKI DASH ---
+                // --- KONIEC LOGIKI DASH ---
 
 
                 if (moveVec.length() > 0) {
@@ -894,62 +882,53 @@
                 velocityY -= CONFIG.gravity * delta;
                 camera.position.y += velocityY * delta;
 
-                // --- ZMIENIONY BLOK: LOGIKA LĄDOWANIA I SPADANIA ---
+                // --- LOGIKA LĄDOWANIA I SPADANIA ---
                 const isOverFloor = checkFloorPresence(camera.position.x, camera.position.z);
 
                 if (camera.position.y < CONFIG.FALL_HEIGHT) {
-                    // RESET POZIOMU po spadnięciu za głęboko
                     document.getElementById('visor-overlay').style.backgroundColor = 'rgba(255,0,0,0.8)';
                     setTimeout(() => {
                         document.getElementById('visor-overlay').style.backgroundColor = '';
-                        regenerateLevel(); // Przeładowanie
+                        regenerateLevel(); 
                     }, 100);
                 }
                 
                 if (isOverFloor && camera.position.y <= defaultCameraHeight) {
-                    // Gracz jest nad płytką i poniżej wysokości lądowania
                     camera.position.y = defaultCameraHeight; 
                     velocityY = 0; 
                     canJump = true;
                     if (moveVec.length() > 0) {
-                        // Bobbing (chodzenie)
                         bobTimer += actualSpeed * delta * 2;
                         camera.position.y = defaultCameraHeight + Math.sin(bobTimer) * CONFIG.viewBobHeight;
                     }
                 } else if (!isOverFloor && camera.position.y < defaultCameraHeight) {
-                    // Gracz wpadł do dziury - resetujemy tylko canJump, grawitacja kontynuuje spadek
                     canJump = false;
                 }
                 
-                // Bob timer reset if not on ground
                 if (camera.position.y > defaultCameraHeight || !isOverFloor) {
                     bobTimer = 0;
                 }
-                // --- KONIEC ZMIENIONEGO BLOKU ---
+                // --- KONIEC LOGIKI LĄDOWANIA I SPADANIA ---
 
-                // ZMODYFIKOWANY BLOK - SPRAWDZANIE HIGH SCORE
+                // SPRAWDZANIE HIGH SCORE
                 if(goalObj) {
                     const dist = new THREE.Vector2(camera.position.x, camera.position.z).distanceTo(new THREE.Vector2(goalObj.position.x, goalObj.position.z));
                     if(dist < 1.5) {
                         level++;
 
-                        // DODANA LOGIKA HIGH SCORE
                         if (level > highScore) {
                             highScore = level;
                             localStorage.setItem('protoMazeHighScore', highScore);
                             document.getElementById('highscore-display').innerText = `HIGH: ZONE ${highScore}`;
                         }
-                        // KONIEC DODANEGO BLOKU
 
                         if(level % 2 === 0) { mazeWidth += 2; mazeHeight += 2; }
                         regenerateLevel();
                     }
                 }
-                // KONIEC MODYFIKACJI
             }
             renderer.render(scene, camera);
         }
     </script>
 </body>
-
 </html>
