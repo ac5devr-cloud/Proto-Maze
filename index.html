@@ -1,0 +1,954 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PROTO MAZE v1.7 - UNSTABLE (HOLES ADDED)</title>
+    <style>
+        /* --- BAZA --- */
+        body { margin: 0; overflow: hidden; background: #000; font-family: 'Courier New', monospace; }
+        
+        /* --- PROTOGEN HUD STYLING --- */
+        :root {
+            --proto-color: #00f3ff; /* Neon Cyan */
+            --proto-dim: rgba(0, 243, 255, 0.2);
+            --danger-color: #ff0040;
+        }
+
+        /* Warstwa interfejsu */
+        #ui-layer { 
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+            pointer-events: none; 
+            display: flex; flex-direction: column; justify-content: space-between; 
+            padding: 30px; box-sizing: border-box; 
+            z-index: 10;
+        }
+
+        /* Efekt wizjera */
+        #visor-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 5;
+            background: radial-gradient(circle, rgba(0,0,0,0) 60%, rgba(0,20,40,0.6) 90%, #000 100%);
+            box-shadow: inset 0 0 80px var(--proto-dim);
+            transition: background-color 0.1s;
+        }
+        
+        /* Linie skanowania */
+        #scanlines {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 6;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 255, 255, 0.05) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+            background-size: 100% 4px, 6px 100%;
+            opacity: 0.8;
+        }
+
+        /* Teksty HUD */
+        .hud-text { 
+            color: var(--proto-color); 
+            text-shadow: 0 0 5px var(--proto-color); 
+            font-size: 20px; 
+            font-weight: bold; 
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        /* Minimapa */
+        #minimap-container {
+            position: relative;
+            border: 2px solid var(--proto-color);
+            background: rgba(0, 20, 30, 0.7);
+            border-radius: 10px 0 10px 0;
+            box-shadow: 0 0 15px var(--proto-dim);
+            padding: 5px;
+            display: none; 
+        }
+        #minimap-label {
+            position: absolute; bottom: -20px; right: 0; 
+            font-size: 10px; color: var(--proto-color); opacity: 0.7;
+        }
+
+        /* Nowy kontener na Logo */
+        #logo-container {
+            display: none; 
+            text-align: right;
+            border: 2px solid var(--proto-color);
+            background: rgba(0, 20, 30, 0.7);
+            border-radius: 10px 0 10px 0;
+            box-shadow: 0 0 15px var(--proto-dim);
+            padding: 10px 15px;
+        }
+        #logo-container .div-name {
+            font-size: 14px;
+            color: var(--proto-color);
+            opacity: 0.8;
+            letter-spacing: 3px;
+            margin-bottom: 5px;
+        }
+        #logo-container .div-logo {
+            font-size: 24px;
+            color: #fff;
+            text-shadow: 0 0 10px var(--proto-color);
+            line-height: 1;
+        }
+
+        /* Dolny pasek statusu */
+        .status-area {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .status-bar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: linear-gradient(90deg, transparent, rgba(0, 243, 255, 0.1), transparent);
+            padding: 5px 10px;
+        }
+        .bar-segment {
+            height: 10px; width: 40px;
+            background: var(--proto-color);
+            box-shadow: 0 0 8px var(--proto-color);
+            transform: skewX(-20deg);
+            opacity: 0.8;
+        }
+
+        /* Pasek Cooldownu zdolności */
+        #ability-bar-container {
+            width: 200px; height: 8px;
+            background: rgba(0,0,0,0.5);
+            border: 1px solid var(--proto-color);
+            transform: skewX(-20deg);
+            margin-left: 10px;
+            position: relative;
+        }
+        #ability-fill {
+            width: 100%; height: 100%;
+            background: var(--proto-color);
+            box-shadow: 0 0 10px var(--proto-color);
+            transform-origin: left;
+            transition: width 0.1s linear;
+        }
+        #ability-text {
+            font-size: 12px; color: var(--proto-color); margin-left: 10px;
+        }
+
+        /* Środkowe info */
+        #center-info { 
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); 
+            text-align: center; color: white; 
+            background: rgba(0, 10, 15, 0.9); 
+            padding: 40px; 
+            border: 1px solid var(--proto-color); 
+            box-shadow: 0 0 30px var(--proto-dim), inset 0 0 20px var(--proto-dim);
+            pointer-events: auto; cursor: pointer; 
+            z-index: 20;
+            clip-path: polygon(10% 0, 100% 0, 100% 90%, 90% 100%, 0 100%, 0 10%);
+        }
+
+        /* Celownik */
+        #crosshair { 
+            position: absolute; top: 50%; left: 50%; 
+            width: 20px; height: 20px; 
+            transform: translate(-50%, -50%); 
+            pointer-events: none; z-index: 15;
+        }
+        #crosshair::before, #crosshair::after {
+            content: ''; position: absolute; background: var(--proto-color); box-shadow: 0 0 5px var(--proto-color);
+        }
+        #crosshair::before { top: 9px; left: 0; width: 20px; height: 2px; }
+        #crosshair::after { top: 0; left: 9px; width: 2px; height: 20px; }
+
+        /* Stan uniku */
+        .phasing #visor-overlay {
+            box-shadow: inset 0 0 100px rgba(0, 255, 100, 0.5);
+            background: radial-gradient(circle, rgba(0,255,100,0.1) 0%, rgba(0,20,40,0.6) 90%, #000 100%);
+        }
+        .phasing .hud-text, .phasing .bar-segment, .phasing #ability-fill {
+            filter: hue-rotate(90deg);
+        }
+
+        .hidden { display: none !important; }
+        kbd { border: 1px solid var(--proto-color); color: var(--proto-color); padding: 2px 6px; box-shadow: 0 0 5px var(--proto-dim); background: transparent; font-size: 0.9em;}
+    </style>
+</head>
+<body>
+
+    <div id="visor-overlay"></div>
+    <div id="scanlines"></div>
+    <div id="crosshair"></div>
+
+    <div id="ui-layer">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+            
+            <div>
+                <div class="hud-text" id="level-display">ZONE: 1</div>
+                <div style="font-size:12px; color:cyan; opacity:0.6;">/// SECURE CONNECTION ///</div>
+                
+                <div class="hud-text" id="timer-display" style="font-size: 16px; opacity: 0.8; margin-top: 10px;">TIME: 00:00.000</div>
+                <div class="hud-text" id="highscore-display" style="font-size: 16px; opacity: 0.8; margin-top: 5px;">HIGH: ZONE 1</div>
+            </div>
+            
+            <div id="minimap-container">
+                <canvas id="minimap" width="150" height="150"></canvas>
+                <div id="minimap-label">DEV_RADAR</div>
+            </div>
+            
+            <div id="logo-container">
+                <div class="div-name">PRIME FOX RESEARCH DIVISION</div>
+                <div class="div-logo">
+                    <span style="color: var(--danger-color);">P</span>
+                    <span style="color: white;">/F</span>
+                </div>
+            </div>
+            </div>
+
+        <div class="status-area">
+            <div style="display: flex; align-items: center;">
+                <span id="ability-text">[F] PHASE SHIFT</span>
+                <div id="ability-bar-container">
+                    <div id="ability-fill"></div>
+                </div>
+            </div>
+            <div class="status-bar">
+                <div class="hud-text" style="font-size: 12px;">INTEGRITY:</div>
+                <div class="bar-segment"></div>
+                <div class="bar-segment"></div>
+                <div class="bar-segment" style="opacity:0.3"></div>
+            </div>
+            <div class="hud-text" style="font-size: 12px; margin-top: 10px; opacity: 0.8; text-align: left;">
+                [<kbd>WASD</kbd> MOVE] [<kbd>SPACE</kbd> JUMP] [<kbd>F</kbd> DODGE/DASH]
+            </div>
+        </div>
+    </div>
+
+    <div id="center-info">
+        <h1 style="margin:0 0 10px 0; color: #00f3ff; text-shadow: 0 0 15px cyan; font-size: 3em;">PROTO MAZE</h1>
+        <p style="font-family: monospace;">> Initialize Neural Link...</p>
+        <p style="font-size: 0.8em; color: #aaa;">(Click to Engage System)</p>
+
+        <p style="margin-top: 30px; font-size: 1em; color: var(--proto-color); cursor: pointer; border: 1px solid var(--proto-dim); padding: 5px 10px;" id="lore-button">
+            [ Show Info ]
+        </p>
+    </div>
+
+    <div id="lore-screen" class="hidden" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 10, 15, 0.95); z-index: 30; color: var(--proto-color); padding: 5%; box-sizing: border-box; font-family: 'Courier New', monospace; overflow-y: auto; text-align: center;">
+        
+        <div style="max-width: 800px; margin: auto; text-align: left;">
+            <h1 style="text-shadow: 0 0 15px cyan;">// Basic Info: 77-B //</h1>
+            <div id="lore-content" style="font-size: 1.1em; line-height: 1.8;">
+                </div>
+        </div>
+
+        <p id="lore-close-button" style="margin-top: 40px; font-size: 1.2em; cursor: pointer; text-align: center; border: 1px solid var(--proto-color); padding: 10px; display: inline-block;">
+            [ RETURN TO INTERFACE ]
+        </p>
+    </div>
+
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
+
+        const CONFIG = {
+            DEV_SHOW_MINIMAP: false, 
+            wallHeight: 3.5,
+            cellSize: 3.0,
+            walkSpeed: 6.0,
+            // runSpeed: 11.0, <-- USUNIĘTE
+            playerRadius: 0.5,
+            jumpForce: 6.0,
+            gravity: 15.0,
+            viewBobSpeed: 12,
+            viewBobHeight: 0.1,
+            
+            // Konfiguracja wrogów
+            enemyStartLevel: 5,  
+            enemyCountBase: 2,
+            dodgeDuration: 0.4, // SKRÓCONY CZAS TRWANIA UNIKU
+            dodgeCooldown: 3.0,
+            
+            // DODANE: Konfiguracja Dash
+            dashForce: 15.0, // SIŁA ODRZUTU PODCZAS DASH
+            dashTime: 0.2, // CZAS TRWANIA FIZYCZNEGO ODRZUTU
+            
+            // Konfiguracja dziur
+            HOLE_CHANCE: 0.08, 
+            FALL_HEIGHT: -5.0 
+        };
+
+        // DODANA TREŚĆ INFO
+        const LORE_TEXT = `
+        <p>> SYSTEM STATUS: CRITICAL.</p>
+        <p>> UNIT: 734 (TY). OBJECTIVE: <span style="color:#ff0040">UNKNOWN</span>. LAST DIRECTIVE: <span style="color:#ff0040;">UNKNOWN</span>.</p>
+        <p> </p>
+        <p>> General Control Info</p>
+        <p> </p>
+        <p> "Basic Movement" <kbd>W</kbd> <kbd>S</kbd> <kbd>A</kbd> <kbd>D</kbd> </p>
+        <p> </p>
+        <p> "Jumping" <kbd>Space</kbd> </p>
+        <p> "Phase Shift" [<kbd>F</kbd>] </p>
+        <p>> END OF TRANSMISSION.</p>
+        `;
+        // KONIEC LORE
+
+        // --- ZMIENNE ---
+        let scene, camera, renderer, controls;
+        let walls = [], enemies = [], goalObj = null;
+        // USUNIĘTO isRunning
+        let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
+        let canJump = false; 
+        let velocityY = 0;
+        
+        let gameStartTime = 0;
+        let isGameRunning = false;
+        let highScore = localStorage.getItem('protoMazeHighScore') || 1;
+        
+        let isDodging = false;
+        let dodgeTimer = 0;
+        let cooldownTimer = 0;
+        
+        // DODANE: Dash variables
+        let dashVector = new THREE.Vector3();
+        let dashTimer = 0;
+        // KONIEC DODANE
+
+        const abilityFill = document.getElementById('ability-fill');
+        const abilityText = document.getElementById('ability-text');
+        
+        let prevTime = performance.now();
+        let direction = new THREE.Vector3();
+        
+        let level = 1;
+        let mazeWidth = 11;
+        let mazeHeight = 11;
+        let grid = [];
+        let bobTimer = 0;
+        const defaultCameraHeight = 1.6;
+
+        const minimapCanvas = document.getElementById('minimap');
+        const minimapCtx = minimapCanvas.getContext('2d');
+
+        // DODANA FUNKCJA FORMATOWANIA CZASU
+        function formatTime(ms) {
+            const minutes = Math.floor(ms / 60000);
+            const seconds = Math.floor((ms % 60000) / 1000);
+            const milliseconds = ms % 1000;
+            return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(milliseconds).padStart(3, '0')}`;
+        }
+
+        // if(CONFIG.DEV_SHOW_MINIMAP) document.getElementById('minimap-container').style.display = 'block'; <-- USUNIĘTE, PRZENIESIONE DO init()
+
+        init();
+        animate();
+
+        function generateTexture(color, type = 'grid') {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512; canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = color; ctx.fillRect(0,0,512,512);
+
+            if (type === 'grid') {
+                ctx.strokeStyle = '#004444'; ctx.lineWidth = 4;
+                ctx.strokeRect(0,0,512,512);
+                ctx.fillStyle = '#001111'; ctx.fillRect(10,10, 492, 492);
+            } else if (type === 'brick') {
+                ctx.fillStyle = '#0a0a0a'; ctx.fillRect(0,0,512,512);
+                ctx.strokeStyle = '#00f3ff'; ctx.lineWidth = 2;
+                for(let y=0; y<512; y+=64) {
+                    for(let x=0; x<512; x+=64) {
+                        ctx.strokeRect(x,y,64,64);
+                        if(Math.random()>0.8) {
+                            ctx.fillStyle = 'rgba(0, 243, 255, 0.2)';
+                            ctx.fillRect(x+4,y+4,56,56);
+                        }
+                    }
+                }
+            }
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
+            return tex;
+        }
+
+        function init() {
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 150);
+            camera.position.y = defaultCameraHeight;
+
+            const ambientLight = new THREE.AmbientLight(0x404040); 
+            scene.add(ambientLight);
+
+            const flashLight = new THREE.SpotLight(0xaaffff, 4.0);
+            flashLight.position.set(0.3, -0.3, 0);
+            flashLight.angle = Math.PI / 5; flashLight.penumbra = 0.5; flashLight.distance = 40;
+            flashLight.castShadow = true;
+            camera.add(flashLight);
+            
+            const targetObj = new THREE.Object3D();
+            targetObj.position.set(0, 0, -5);
+            camera.add(targetObj);
+            flashLight.target = targetObj;
+            scene.add(camera);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            document.body.appendChild(renderer.domElement);
+
+            controls = new PointerLockControls(camera, document.body);
+            
+            // ZMODYFIKOWANY BLOK - STARTOWANIE TIMERA
+            const instructions = document.getElementById('center-info');
+            instructions.addEventListener('click', () => {
+                controls.lock();
+                if (!isGameRunning) { // Start timer on first lock
+                    gameStartTime = performance.now();
+                    isGameRunning = true;
+                }
+            });
+            // KONIEC MODYFIKACJI
+            
+            controls.addEventListener('lock', () => instructions.classList.add('hidden'));
+            controls.addEventListener('unlock', () => instructions.classList.remove('hidden'));
+
+            const onKeyDown = (event) => {
+                switch (event.code) {
+                    case 'ArrowUp': case 'KeyW': moveForward = true; break;
+                    case 'ArrowLeft': case 'KeyA': moveLeft = true; break;
+                    case 'ArrowDown': case 'KeyS': moveBackward = true; break;
+                    case 'ArrowRight': case 'KeyD': moveRight = true; break;
+                    // case 'ShiftLeft': case 'ShiftRight': isRunning = true; break; <-- USUNIĘTO SPRINT
+                    case 'Space': if (canJump) { velocityY = CONFIG.jumpForce; canJump = false; } break;
+                    case 'KeyF': tryDodge(); break;
+                }
+            };
+            const onKeyUp = (event) => {
+                switch (event.code) {
+                    case 'ArrowUp': case 'KeyW': moveForward = false; break;
+                    case 'ArrowLeft': case 'KeyA': moveLeft = false; break;
+                    case 'ArrowDown': case 'KeyS': moveBackward = false; break;
+                    case 'ArrowRight': case 'KeyD': moveRight = false; break;
+                    // case 'ShiftLeft': case 'ShiftRight': isRunning = false; break; <-- USUNIĘTO SPRINT
+                }
+            };
+            document.addEventListener('keydown', onKeyDown);
+            document.addEventListener('keyup', onKeyUp);
+            window.addEventListener('resize', onWindowResize);
+
+            // DODANY BLOK - LOGIKA LORE I HIGH SCORE
+            // ----- LOGIKA LORE -----
+            const loreButton = document.getElementById('lore-button');
+            const loreScreen = document.getElementById('lore-screen');
+            const loreContent = document.getElementById('lore-content');
+            const loreClose = document.getElementById('lore-close-button');
+
+            loreContent.innerHTML = LORE_TEXT; // Wstrzyknij treść
+
+            loreButton.addEventListener('click', (e) => {
+                e.stopPropagation(); // Ważne: powstrzymaj #center-info od przejęcia klika
+                loreScreen.classList.remove('hidden');
+            });
+
+            loreClose.addEventListener('click', () => {
+                loreScreen.classList.add('hidden');
+            });
+            
+            // ----- WCZYTANIE HIGH SCORE -----
+            document.getElementById('highscore-display').innerText = `HIGH: ZONE ${highScore}`;
+            // KONIEC DODANEGO BLOKU
+            
+            // DODANE: LOGIKA MINIMAPY/LOGO (AKTUALIZACJA)
+            const minimapContainer = document.getElementById('minimap-container');
+            const logoContainer = document.getElementById('logo-container');
+            if (CONFIG.DEV_SHOW_MINIMAP) {
+                minimapContainer.style.display = 'block';
+                logoContainer.style.display = 'none';
+            } else {
+                minimapContainer.style.display = 'none';
+                logoContainer.style.display = 'block';
+            }
+            // KONIEC DODANEJ LOGIKI
+
+            regenerateLevel();
+        }
+        
+        // --- NOWA FUNKCJA DLA DZIUR ---
+        function checkFloorPresence(px, pz) {
+            // Zamieniamy pozycje świata na indeksy komórek w siatce
+            const cellX = Math.round(px / CONFIG.cellSize);
+            const cellZ = Math.round(pz / CONFIG.cellSize);
+
+            if (cellX < 0 || cellX >= mazeWidth || cellZ < 0 || cellZ >= mazeHeight) {
+                return false; // Poza mapą (ściany zewnętrzne)
+            }
+            
+            const cellType = grid[cellZ][cellX];
+            // Chodliwe komórki to: '.', 'P', 'G', 'E'. Dziura to 'H'.
+            return cellType !== '#' && cellType !== 'H'; 
+        }
+
+        function tryDodge() {
+            if (cooldownTimer <= 0 && !isDodging) {
+                isDodging = true;
+                dodgeTimer = CONFIG.dodgeDuration;
+                cooldownTimer = CONFIG.dodgeCooldown;
+                document.body.classList.add('phasing');
+                abilityText.innerText = ">> PHASING <<";
+                
+                // --- LOGIKA DASH/UNIK Z RUCHEM ---
+                dashTimer = CONFIG.dashTime;
+                
+                // Obliczanie kierunku ruchu do Dash:
+                const forwardVec = new THREE.Vector3(); camera.getWorldDirection(forwardVec); forwardVec.y = 0; forwardVec.normalize();
+                const rightVec = new THREE.Vector3().crossVectors(forwardVec, camera.up);
+                
+                // Kierunek na podstawie klawiszy WASD
+                const tempDirection = new THREE.Vector3(
+                    Number(moveRight) - Number(moveLeft),
+                    0,
+                    Number(moveForward) - Number(moveBackward)
+                ).normalize();
+                
+                dashVector.set(0, 0, 0);
+
+                if (tempDirection.length() > 0) {
+                    // Jeśli gracz się porusza, Dash wykonaj w kierunku ruchu
+                    dashVector.addScaledVector(forwardVec, tempDirection.z);
+                    dashVector.addScaledVector(rightVec, tempDirection.x);
+                    dashVector.normalize().multiplyScalar(CONFIG.dashForce);
+                } else {
+                    // Jeśli gracz stoi, Dash wykonaj w kierunku, w którym patrzy
+                    dashVector.copy(forwardVec).multiplyScalar(CONFIG.dashForce);
+                }
+                // --- KONIEC LOGIKI DASH ---
+            }
+        }
+
+        function updateEnvironment(lvl) {
+            const hue = (lvl * 0.15) % 1.0;
+            const color = new THREE.Color().setHSL(hue, 0.6, 0.05);
+            const fogColor = new THREE.Color().setHSL(hue, 0.6, 0.1);
+            scene.background = color;
+            scene.fog = new THREE.FogExp2(fogColor, 0.08);
+
+            const oldStars = scene.getObjectByName("SkyPoints");
+            if(oldStars) scene.remove(oldStars);
+
+            const starGeo = new THREE.BufferGeometry();
+            const starCount = 500;
+            const starPos = new Float32Array(starCount * 3);
+            for(let i=0; i<starCount*3; i++) starPos[i] = (Math.random() - 0.5) * 100;
+            starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+            const starMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.2, transparent: true, opacity: 0.6 });
+            const stars = new THREE.Points(starGeo, starMat);
+            stars.name = "SkyPoints";
+            scene.add(stars);
+        }
+
+        function generateMazeData(w, h) {
+            let map = Array(h).fill().map(() => Array(w).fill('#'));
+            const dirs = [[0,-2], [0,2], [-2,0], [2,0]];
+            const stack = [[1, 1]];
+            map[1][1] = '.';
+
+            while(stack.length) {
+                const [cx, cy] = stack[stack.length - 1];
+                let neighbors = [];
+                for(let [dx, dy] of dirs) {
+                    const nx = cx + dx, ny = cy + dy;
+                    if(nx > 0 && nx < w-1 && ny > 0 && ny < h-1 && map[ny][nx] === '#') {
+                        neighbors.push([nx, ny, dx/2, dy/2]);
+                    }
+                }
+                if(neighbors.length) {
+                    const [nx, ny, mx, my] = neighbors[Math.floor(Math.random() * neighbors.length)];
+                    map[cy + my][cx + mx] = '.'; map[ny][nx] = '.';
+                    stack.push([nx, ny]);
+                } else {
+                    stack.pop();
+                }
+            }
+
+            let bestDist = 0;
+            let end = {x: 1, y: 1};
+            let emptySpaces = [];
+            for(let y=0; y<h; y++){
+                for(let x=0; x<w; x++){
+                    if(map[y][x] === '.'){
+                        emptySpaces.push({x, y});
+                        let dist = Math.sqrt((x-1)**2 + (y-1)**2);
+                        if(dist > bestDist) { bestDist = dist; end = {x, y}; }
+                    }
+                }
+            }
+            
+            // --- GENEROWANIE DZIUR (H) ---
+            for(const {x, y} of emptySpaces) {
+                // Zapobiegamy dziurom w pobliżu startu (3x3) i końca
+                if (x < 3 && y < 3) continue; 
+                if (x === end.x && y === end.y) continue;
+                
+                if (Math.random() < CONFIG.HOLE_CHANCE) {
+                    map[y][x] = 'H';
+                }
+            }
+
+            map[1][1] = 'P';
+            map[end.y][end.x] = 'G';
+
+            // --- SPAWN PRZECIWNIKÓW (TYLKO OD LVL 5) ---
+            if (level >= CONFIG.enemyStartLevel) {
+                // Filtrujemy, żeby wrogowie nie spawnowali się na 'H'
+                emptySpaces = emptySpaces.filter(p => map[p.y][p.x] !== 'H' && !(p.x < 4 && p.y < 4) && !(p.x === end.x && p.y === end.y));
+                const numEnemies = CONFIG.enemyCountBase + Math.floor((level - 4) * 0.5);
+                
+                for(let i=0; i < numEnemies && emptySpaces.length > 0; i++) {
+                    const idx = Math.floor(Math.random() * emptySpaces.length);
+                    const pos = emptySpaces.splice(idx, 1)[0];
+                    map[pos.y][pos.x] = 'E';
+                }
+            }
+            return map;
+        }
+
+        function regenerateLevel() {
+            walls.forEach(w => scene.remove(w)); walls = [];
+            enemies.forEach(e => scene.remove(e.mesh)); enemies = [];
+            if(goalObj) scene.remove(goalObj);
+
+            updateEnvironment(level);
+            grid = generateMazeData(mazeWidth, mazeHeight);
+
+            const wallTex = generateTexture('#000', 'brick');
+            const wallMat = new THREE.MeshStandardMaterial({ map: wallTex, roughness: 0.2, metalness: 0.8, emissive: 0x000505 });
+            
+            // --- ZMIENIONY BLOK: INDYWIDUALNE PŁYTKI PODŁOGOWE ---
+            const floorTex = generateTexture('#000', 'grid');
+            const floorMat = new THREE.MeshStandardMaterial({ 
+                map: floorTex, 
+                roughness: 0.5, 
+                metalness: 0.5, 
+                side: THREE.DoubleSide // Widoczna z obu stron
+            });
+
+            const floorTileGeo = new THREE.PlaneGeometry(CONFIG.cellSize, CONFIG.cellSize);
+            const floorTileGeoRotated = floorTileGeo.clone().rotateX(-Math.PI / 2); // Rotacja w dół
+
+            const fullFloorGeo = new THREE.PlaneGeometry(mazeWidth * CONFIG.cellSize, mazeHeight * CONFIG.cellSize);
+            
+            // JEDEN SUFIT DLA CAŁEJ MAPY
+            const ceil = new THREE.Mesh(fullFloorGeo, new THREE.MeshBasicMaterial({ color: 0x000000 }));
+            ceil.rotation.x = Math.PI / 2;
+            ceil.position.set((mazeWidth * CONFIG.cellSize)/2 - CONFIG.cellSize/2, CONFIG.wallHeight, (mazeHeight * CONFIG.cellSize)/2 - CONFIG.cellSize/2);
+            scene.add(ceil);
+
+            const boxGeo = new THREE.BoxGeometry(CONFIG.cellSize, CONFIG.wallHeight, CONFIG.cellSize);
+            // --- KONIEC ZMIENIONEGO BLOKU ---
+            
+            // --- NOWY MODEL WROGA: UNSTABLE CORE ---
+            const enemyGeo = new THREE.IcosahedronGeometry(0.5, 0); 
+            const enemyMat = new THREE.MeshStandardMaterial({ 
+                color: 0xff0000, 
+                emissive: 0xaa0000, 
+                emissiveIntensity: 0.8,
+                wireframe: true 
+            });
+
+            for (let y = 0; y < mazeHeight; y++) {
+                for (let x = 0; x < mazeWidth; x++) {
+                    const type = grid[y][x];
+                    const px = x * CONFIG.cellSize;
+                    const pz = y * CONFIG.cellSize;
+
+                    if (type === '#') {
+                        const wall = new THREE.Mesh(boxGeo, wallMat);
+                        wall.position.set(px, CONFIG.wallHeight/2, pz);
+                        wall.castShadow = true; wall.receiveShadow = true;
+                        wall.userData.bbox = new THREE.Box3().setFromObject(wall);
+                        walls.push(wall); scene.add(wall);
+                    } else if (type === 'P' || type === 'G' || type === 'E' || type === '.') {
+                        // Tworzenie płytki podłogowej
+                        const floorTile = new THREE.Mesh(floorTileGeoRotated, floorMat);
+                        floorTile.position.set(px, 0, pz);
+                        floorTile.receiveShadow = true;
+                        walls.push(floorTile); 
+                        scene.add(floorTile);
+
+                        if (type === 'P') {
+                            camera.position.set(px, defaultCameraHeight, pz);
+                            camera.lookAt(px + 10, defaultCameraHeight, pz); 
+                        } else if (type === 'G') {
+                            const gGeo = new THREE.IcosahedronGeometry(CONFIG.cellSize * 0.3, 1);
+                            const gMat = new THREE.MeshStandardMaterial({ color: 0x00ffff, emissive: 0x0088aa, wireframe: true, transparent:true, opacity:0.8 });
+                            goalObj = new THREE.Mesh(gGeo, gMat);
+                            goalObj.position.set(px, CONFIG.wallHeight/2, pz);
+                            const gLight = new THREE.PointLight(0x00ffff, 3, 8);
+                            goalObj.add(gLight); scene.add(goalObj);
+                        } else if (type === 'E') {
+                            // Tworzenie "Niestabilnego rdzenia"
+                            const enMesh = new THREE.Mesh(enemyGeo, enemyMat);
+                            enMesh.position.set(px, 1.5, pz);
+                            
+                            // Wewnętrzny rdzeń (wypełniony)
+                            const core = new THREE.Mesh(
+                                new THREE.IcosahedronGeometry(0.2, 0),
+                                new THREE.MeshBasicMaterial({ color: 0xffffff })
+                            );
+                            enMesh.add(core);
+
+                            // Czerwone światło
+                            const eLight = new THREE.PointLight(0xff0000, 3, 6);
+                            enMesh.add(eLight);
+
+                            const isX = Math.random() > 0.5;
+                            enemies.push({
+                                mesh: enMesh,
+                                basePos: new THREE.Vector3(px, 1.5, pz),
+                                axis: isX ? 'x' : 'z',
+                                offset: 0,
+                                speed: 3 + Math.random() * 2, // Szybsze niż drony
+                                range: CONFIG.cellSize * 0.4
+                            });
+                            scene.add(enMesh);
+                        }
+                    } else if (type === 'H') {
+                        // Dziura - celowo nic nie dodajemy, aby stworzyć lukę
+                    }
+                }
+            }
+            document.getElementById('level-display').innerText = `ZONE: ${level}`;
+        }
+
+        function drawMinimap() {
+            if (!CONFIG.DEV_SHOW_MINIMAP) return;
+            const size = 150;
+            const mapW = grid[0].length; const mapH = grid.length;
+            const cellW = size / mapW; const cellH = size / mapH;
+
+            minimapCtx.fillStyle = 'rgba(0, 10, 20, 0.8)';
+            minimapCtx.fillRect(0, 0, size, size);
+
+            for(let y=0; y<mapH; y++) {
+                for(let x=0; x<mapW; x++) {
+                    const px = x * cellW; const py = y * cellH;
+                    if(grid[y][x] === '#') {
+                        minimapCtx.fillStyle = 'rgba(0, 243, 255, 0.3)';
+                        minimapCtx.fillRect(px, py, cellW+0.5, cellH+0.5);
+                    } else if(grid[y][x] === 'G') {
+                        minimapCtx.fillStyle = '#0f0'; minimapCtx.fillRect(px, py, cellW, cellH);
+                    } else if(grid[y][x] === 'H') {
+                        minimapCtx.fillStyle = '#440000'; // Oznacz dziurę ciemnym kolorem
+                        minimapCtx.fillRect(px, py, cellW, cellH);
+                    }
+                }
+            }
+            enemies.forEach(en => {
+                const ex = (en.mesh.position.x / CONFIG.cellSize) * cellW;
+                const ey = (en.mesh.position.z / CONFIG.cellSize) * cellH;
+                minimapCtx.fillStyle = '#f00'; minimapCtx.fillRect(ex-2, ey-2, 4, 4);
+            });
+            const playerX = (camera.position.x / CONFIG.cellSize) * cellW;
+            const playerZ = (camera.position.z / CONFIG.cellSize) * cellH;
+            const dir = new THREE.Vector3(); camera.getWorldDirection(dir);
+            const angle = Math.atan2(dir.z, dir.x);
+
+            minimapCtx.save();
+            minimapCtx.translate(playerX, playerZ); minimapCtx.rotate(angle);
+            minimapCtx.fillStyle = '#fff';
+            minimapCtx.beginPath(); minimapCtx.moveTo(6, 0); minimapCtx.lineTo(-4, 4); minimapCtx.lineTo(-4, -4);
+            minimapCtx.fill(); minimapCtx.restore();
+        }
+
+        function checkCollision(position) {
+            const playerBox = new THREE.Box3();
+            const r = CONFIG.playerRadius;
+            playerBox.min.set(position.x - r, position.y - 1.0, position.z - r);
+            playerBox.max.set(position.x + r, position.y + 0.5, position.z + r);
+            for (let obj of walls) {
+                // Jeśli obiektem jest płytka podłogowa (PlaneGeometry), ignorujemy ją w kolizji poziomej
+                if(obj.geometry.type === 'PlaneGeometry') continue; 
+                if (obj.userData.bbox && playerBox.intersectsBox(obj.userData.bbox)) return true;
+            }
+            return false;
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const time = performance.now();
+            const delta = (time - prevTime) / 1000;
+            prevTime = time;
+
+            // DODANA AKTUALIZACJA TIMERA
+            if (isGameRunning && controls.isLocked) {
+                const elapsedTime = time - gameStartTime;
+                document.getElementById('timer-display').innerText = `TIME: ${formatTime(elapsedTime)}`;
+            }
+            // KONIEC DODANEGO BLOKU
+
+            if (controls.isLocked) {
+                if(isDodging) {
+                    dodgeTimer -= delta;
+                    if(dodgeTimer <= 0) {
+                        isDodging = false;
+                        document.body.classList.remove('phasing');
+                        abilityText.innerText = "[F] RECHARGING...";
+                    }
+                } else if (cooldownTimer > 0) {
+                    cooldownTimer -= delta;
+                    const pct = 100 - ((cooldownTimer / CONFIG.dodgeCooldown) * 100);
+                    abilityFill.style.width = `${pct}%`;
+                    if(cooldownTimer <= 0) {
+                        abilityFill.style.width = '100%'; abilityText.innerText = "[F] PHASE SHIFT";
+                    }
+                }
+
+                drawMinimap();
+
+                if(goalObj) {
+                    goalObj.rotation.y += delta;
+                    goalObj.rotation.x += delta * 0.5;
+                }
+
+                // --- LOGIKA WROGÓW ---
+                enemies.forEach(en => {
+                    // Ruch
+                    en.offset += en.speed * delta;
+                    const offsetVal = Math.sin(en.offset) * en.range;
+                    if(en.axis === 'x') en.mesh.position.x = en.basePos.x + offsetVal;
+                    else en.mesh.position.z = en.basePos.z + offsetVal;
+                    
+                    // ANIMACJA NIESTABILNOŚCI
+                    en.mesh.rotation.y += delta * 4; // Bardzo szybki obrót
+                    en.mesh.rotation.x += delta * 2;
+                    // Glitch efekt (drganie skali)
+                    const jitter = 1 + (Math.random() - 0.5) * 0.3; 
+                    en.mesh.scale.setScalar(jitter);
+
+                    // Kolizja
+                    if(!isDodging) {
+                        const dist = new THREE.Vector2(camera.position.x, camera.position.z)
+                                     .distanceTo(new THREE.Vector2(en.mesh.position.x, en.mesh.position.z));
+                        if(dist < 1.0) {
+                            // RESET POZIOMU (ALE NIE CAŁEJ GRY)
+                            document.getElementById('visor-overlay').style.backgroundColor = 'rgba(255,0,0,0.8)';
+                            setTimeout(() => {
+                                document.getElementById('visor-overlay').style.backgroundColor = '';
+                                regenerateLevel(); // Przeładowanie
+                            }, 100);
+                        }
+                    }
+                });
+
+                // const actualSpeed = isRunning ? CONFIG.runSpeed : CONFIG.walkSpeed; <-- USUNIĘTE SPRINT
+                const actualSpeed = CONFIG.walkSpeed; // <-- STAŁA PRĘDKOŚĆ
+
+                direction.z = Number(moveForward) - Number(moveBackward);
+                direction.x = Number(moveRight) - Number(moveLeft);
+                direction.normalize(); 
+
+                const forwardVec = new THREE.Vector3(); const rightVec = new THREE.Vector3();
+                camera.getWorldDirection(forwardVec); forwardVec.y = 0; forwardVec.normalize();
+                rightVec.crossVectors(forwardVec, camera.up);
+
+                const moveVec = new THREE.Vector3();
+                if (moveForward || moveBackward || moveLeft || moveRight) {
+                    moveVec.addScaledVector(forwardVec, direction.z);
+                    moveVec.addScaledVector(rightVec, direction.x);
+                    moveVec.normalize().multiplyScalar(actualSpeed * delta);
+                }
+
+                // --- DODANE: LOGIKA DASH ---
+                if (dashTimer > 0) {
+                    dashTimer -= delta;
+                    // Dodaj siłę Dash do normalnego ruchu
+                    moveVec.addScaledVector(dashVector, delta); 
+                }
+                // --- KONIEC DODANEJ LOGIKI DASH ---
+
+
+                if (moveVec.length() > 0) {
+                    let nextPos = camera.position.clone(); nextPos.x += moveVec.x;
+                    if (!checkCollision(nextPos)) camera.position.x += moveVec.x;
+                    nextPos = camera.position.clone(); nextPos.z += moveVec.z;
+                    if (!checkCollision(nextPos)) camera.position.z += moveVec.z;
+                }
+
+                velocityY -= CONFIG.gravity * delta;
+                camera.position.y += velocityY * delta;
+
+                // --- ZMIENIONY BLOK: LOGIKA LĄDOWANIA I SPADANIA ---
+                const isOverFloor = checkFloorPresence(camera.position.x, camera.position.z);
+
+                if (camera.position.y < CONFIG.FALL_HEIGHT) {
+                    // RESET POZIOMU po spadnięciu za głęboko
+                    document.getElementById('visor-overlay').style.backgroundColor = 'rgba(255,0,0,0.8)';
+                    setTimeout(() => {
+                        document.getElementById('visor-overlay').style.backgroundColor = '';
+                        regenerateLevel(); // Przeładowanie
+                    }, 100);
+                }
+                
+                if (isOverFloor && camera.position.y <= defaultCameraHeight) {
+                    // Gracz jest nad płytką i poniżej wysokości lądowania
+                    camera.position.y = defaultCameraHeight; 
+                    velocityY = 0; 
+                    canJump = true;
+                    if (moveVec.length() > 0) {
+                        // Bobbing (chodzenie)
+                        bobTimer += actualSpeed * delta * 2;
+                        camera.position.y = defaultCameraHeight + Math.sin(bobTimer) * CONFIG.viewBobHeight;
+                    }
+                } else if (!isOverFloor && camera.position.y < defaultCameraHeight) {
+                    // Gracz wpadł do dziury - resetujemy tylko canJump, grawitacja kontynuuje spadek
+                    canJump = false;
+                }
+                
+                // Bob timer reset if not on ground
+                if (camera.position.y > defaultCameraHeight || !isOverFloor) {
+                    bobTimer = 0;
+                }
+                // --- KONIEC ZMIENIONEGO BLOKU ---
+
+                // ZMODYFIKOWANY BLOK - SPRAWDZANIE HIGH SCORE
+                if(goalObj) {
+                    const dist = new THREE.Vector2(camera.position.x, camera.position.z).distanceTo(new THREE.Vector2(goalObj.position.x, goalObj.position.z));
+                    if(dist < 1.5) {
+                        level++;
+
+                        // DODANA LOGIKA HIGH SCORE
+                        if (level > highScore) {
+                            highScore = level;
+                            localStorage.setItem('protoMazeHighScore', highScore);
+                            document.getElementById('highscore-display').innerText = `HIGH: ZONE ${highScore}`;
+                        }
+                        // KONIEC DODANEGO BLOKU
+
+                        if(level % 2 === 0) { mazeWidth += 2; mazeHeight += 2; }
+                        regenerateLevel();
+                    }
+                }
+                // KONIEC MODYFIKACJI
+            }
+            renderer.render(scene, camera);
+        }
+    </script>
+</body>
+</html>
