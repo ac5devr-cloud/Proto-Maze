@@ -288,7 +288,12 @@
             
             // Konfiguracja dziur
             HOLE_CHANCE: 0.08, 
-            FALL_HEIGHT: -5.0 
+            FALL_HEIGHT: -5.0,
+            
+            // ZMIENIONE: Konfiguracja Pościgowca
+            PURSUER_START_LEVEL: 25, // NOWE: Pościgowce startują od poziomu 25
+            PURSUER_CHANCE: 0.01, // ZMIENIONE: Szansa na spawn (1%)
+            PURSUER_SPEED: 4.0 
         };
 
         const LORE_TEXT = `
@@ -306,7 +311,7 @@
 
         // --- ZMIENNE ---
         let scene, camera, renderer, controls;
-        let walls = [], enemies = [], goalObj = null;
+        let walls = [], enemies = [], pursuers = [], goalObj = null; 
         let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
         let canJump = false; 
         let velocityY = 0;
@@ -319,13 +324,12 @@
         let dodgeTimer = 0;
         let cooldownTimer = 0;
         
-        // DODANE: Dash variables
+        // Dash variables
         let dashVector = new THREE.Vector3();
         let dashTimer = 0;
 
-        // DODANE: Audio
+        // Audio
         let gameMusic = null; 
-        // KONIEC DODANEGO
 
         const abilityFill = document.getElementById('ability-fill');
         const abilityText = document.getElementById('ability-text');
@@ -343,6 +347,9 @@
         const minimapCanvas = document.getElementById('minimap');
         const minimapCtx = minimapCanvas.getContext('2d');
 
+        // Geometria wroga (shared)
+        const enemyGeo = new THREE.IcosahedronGeometry(0.5, 0); 
+        
         function formatTime(ms) {
             const minutes = Math.floor(ms / 60000);
             const seconds = Math.floor((ms % 60000) / 1000);
@@ -409,7 +416,7 @@
 
             controls = new PointerLockControls(camera, document.body);
             
-            // ZMODYFIKOWANY BLOK - STARTOWANIE TIMERA I MUZYKI (W ŚRODKU)
+            // BLOK - STARTOWANIE TIMERA I MUZYKI (W ŚRODKU)
             const instructions = document.getElementById('center-info');
             gameMusic = document.getElementById('game-music'); 
 
@@ -430,7 +437,7 @@
             });
             // KONIEC MODYFIKACJI
 
-            // ZMODYFIKOWANY BLOK: OBSŁUGA LOCK/UNLOCK I MUZYKI
+            // BLOK: OBSŁUGA LOCK/UNLOCK I MUZYKI
             controls.addEventListener('lock', () => {
                 instructions.classList.add('hidden');
                 // WZNÓW MUZYKĘ PO POWROCIE Z PAUZY
@@ -441,7 +448,7 @@
                 // ZATRZYMAJ MUZYKĘ PO WEJŚCIU W PAUZĘ
                 if (gameMusic) gameMusic.pause();
             });
-            // KONIEC ZMODYFIKOWANEGO BLOKU
+            // KONIEC BLOKU
 
             const onKeyDown = (event) => {
                 switch (event.code) {
@@ -601,13 +608,17 @@
                 }
             }
             
-            // --- GENEROWANIE DZIUR (H) ---
+            // --- GENEROWANIE DZIUR (H) i POŚCIGOWCÓW (C) --- ZMIENIONO
             for(const {x, y} of emptySpaces) {
                 if (x < 3 && y < 3) continue; 
                 if (x === end.x && y === end.y) continue;
                 
                 if (Math.random() < CONFIG.HOLE_CHANCE) {
                     map[y][x] = 'H';
+                } 
+                // NOWA LOGIKA: Sprawdzanie poziomu przed spawnem Pościgowca
+                else if (level >= CONFIG.PURSUER_START_LEVEL && Math.random() < CONFIG.PURSUER_CHANCE && map[y][x] !== 'H') { 
+                    map[y][x] = 'C'; 
                 }
             }
 
@@ -616,7 +627,8 @@
 
             // --- SPAWN PRZECIWNIKÓW (TYLKO OD LVL 5) ---
             if (level >= CONFIG.enemyStartLevel) {
-                emptySpaces = emptySpaces.filter(p => map[p.y][p.x] !== 'H' && !(p.x < 4 && p.y < 4) && !(p.x === end.x && p.y === end.y));
+                // Nie spawnować wrogów tam, gdzie już są pościgowce
+                emptySpaces = emptySpaces.filter(p => map[p.y][p.x] !== 'H' && map[p.y][p.x] !== 'C' && !(p.x < 4 && p.y < 4) && !(p.x === end.x && p.y === end.y));
                 const numEnemies = CONFIG.enemyCountBase + Math.floor((level - 4) * 0.5);
                 
                 for(let i=0; i < numEnemies && emptySpaces.length > 0; i++) {
@@ -631,6 +643,7 @@
         function regenerateLevel() {
             walls.forEach(w => scene.remove(w)); walls = [];
             enemies.forEach(e => scene.remove(e.mesh)); enemies = [];
+            pursuers.forEach(p => scene.remove(p.mesh)); pursuers = []; 
             if(goalObj) scene.remove(goalObj);
 
             updateEnvironment(level);
@@ -659,13 +672,20 @@
 
             const boxGeo = new THREE.BoxGeometry(CONFIG.cellSize, CONFIG.wallHeight, CONFIG.cellSize);
             
-            const enemyGeo = new THREE.IcosahedronGeometry(0.5, 0); 
-            const enemyMat = new THREE.MeshStandardMaterial({ 
+            // Materiały wrogów
+            const enemyRedMat = new THREE.MeshStandardMaterial({ 
                 color: 0xff0000, 
                 emissive: 0xaa0000, 
                 emissiveIntensity: 0.8,
                 wireframe: true 
             });
+            const enemyYellowMat = new THREE.MeshStandardMaterial({ 
+                color: 0xffff00, 
+                emissive: 0x888800, 
+                emissiveIntensity: 0.8,
+                wireframe: true 
+            });
+
 
             for (let y = 0; y < mazeHeight; y++) {
                 for (let x = 0; x < mazeWidth; x++) {
@@ -679,7 +699,7 @@
                         wall.castShadow = true; wall.receiveShadow = true;
                         wall.userData.bbox = new THREE.Box3().setFromObject(wall);
                         walls.push(wall); scene.add(wall);
-                    } else if (type === 'P' || type === 'G' || type === 'E' || type === '.') {
+                    } else if (type === 'P' || type === 'G' || type === 'E' || type === '.' || type === 'C') { 
                         const floorTile = new THREE.Mesh(floorTileGeoRotated, floorMat);
                         floorTile.position.set(px, 0, pz);
                         floorTile.receiveShadow = true;
@@ -697,7 +717,8 @@
                             const gLight = new THREE.PointLight(0x00ffff, 3, 8);
                             goalObj.add(gLight); scene.add(goalObj);
                         } else if (type === 'E') {
-                            const enMesh = new THREE.Mesh(enemyGeo, enemyMat);
+                            // Czerwony wróg (cykliczny)
+                            const enMesh = new THREE.Mesh(enemyGeo, enemyRedMat);
                             enMesh.position.set(px, 1.5, pz);
                             
                             const core = new THREE.Mesh(
@@ -719,6 +740,26 @@
                                 range: CONFIG.cellSize * 0.4
                             });
                             scene.add(enMesh);
+                        } else if (type === 'C') { 
+                            // Żółty Pościgowiec (Chaser) - UŻYWA TEGO SAMEGO MODELU CO 'E'
+                            const cMesh = new THREE.Mesh(enemyGeo, enemyYellowMat);
+                            cMesh.position.set(px, 1.5, pz);
+                            
+                            const core = new THREE.Mesh(
+                                new THREE.IcosahedronGeometry(0.2, 0),
+                                new THREE.MeshBasicMaterial({ color: 0xffffff })
+                            );
+                            cMesh.add(core);
+
+                            const cLight = new THREE.PointLight(0xffff00, 2, 4);
+                            cMesh.add(cLight);
+
+                            pursuers.push({
+                                mesh: cMesh,
+                                isStunned: false,
+                                stunTimer: 0.0,
+                            });
+                            scene.add(cMesh);
                         }
                     } else if (type === 'H') {
                         // Dziura - celowo nic nie dodajemy
@@ -748,6 +789,9 @@
                     } else if(grid[y][x] === 'H') {
                         minimapCtx.fillStyle = '#440000'; 
                         minimapCtx.fillRect(px, py, cellW, cellH);
+                    } else if(grid[y][x] === 'C') { 
+                        minimapCtx.fillStyle = '#ffcc00'; 
+                        minimapCtx.fillRect(px, py, cellW, cellH);
                     }
                 }
             }
@@ -756,6 +800,14 @@
                 const ey = (en.mesh.position.z / CONFIG.cellSize) * cellH;
                 minimapCtx.fillStyle = '#f00'; minimapCtx.fillRect(ex-2, ey-2, 4, 4);
             });
+            
+            // Pościgowce
+            pursuers.forEach(p => { 
+                const ex = (p.mesh.position.x / CONFIG.cellSize) * cellW;
+                const ey = (p.mesh.position.z / CONFIG.cellSize) * cellH;
+                minimapCtx.fillStyle = '#ffff00'; minimapCtx.fillRect(ex-2, ey-2, 4, 4);
+            });
+            
             const playerX = (camera.position.x / CONFIG.cellSize) * cellW;
             const playerZ = (camera.position.z / CONFIG.cellSize) * cellH;
             const dir = new THREE.Vector3(); camera.getWorldDirection(dir);
@@ -771,6 +823,7 @@
         function checkCollision(position) {
             const playerBox = new THREE.Box3();
             const r = CONFIG.playerRadius;
+            // Sprawdzanie kolizji ze ścianami (wysokość dla ścian)
             playerBox.min.set(position.x - r, position.y - 1.0, position.z - r);
             playerBox.max.set(position.x + r, position.y + 0.5, position.z + r);
             for (let obj of walls) {
@@ -821,7 +874,7 @@
                     goalObj.rotation.x += delta * 0.5;
                 }
 
-                // --- LOGIKA WROGÓW ---
+                // --- LOGIKA WROGÓW (CYKLICZNYCH) ---
                 enemies.forEach(en => {
                     en.offset += en.speed * delta;
                     const offsetVal = Math.sin(en.offset) * en.range;
@@ -846,6 +899,74 @@
                         }
                     }
                 });
+                
+                // --- LOGIKA POŚCIGOWCÓW ---
+                pursuers.forEach(p => {
+                    const mesh = p.mesh;
+                    
+                    // DODANE: Animacja rotacji
+                    mesh.rotation.y += delta * 2; 
+                    mesh.rotation.x += delta * 4; // Lepsza animacja dla ikosahedronu
+                    const jitter = 1 + (Math.random() - 0.5) * 0.1; // Mniejszy jitter niż dla cyklicznych
+                    mesh.scale.setScalar(jitter);
+                    
+                    if (!p.isStunned) {
+                        // Obliczenie kierunku do gracza
+                        const targetPos = new THREE.Vector3(camera.position.x, mesh.position.y, camera.position.z);
+                        const dirToPlayer = targetPos.sub(mesh.position).normalize();
+
+                        // Ruch 
+                        const newPos = mesh.position.clone().addScaledVector(dirToPlayer, CONFIG.PURSUER_SPEED * delta);
+                        
+                        // Bardzo prosta kolizja XZ ze ścianami
+                        const oldX = mesh.position.x;
+                        const oldZ = mesh.position.z;
+
+                        mesh.position.x = newPos.x;
+                        // Używamy pozycji o niższej wysokości, aby sprawdzać kolizję na poziomie ziemi
+                        if(checkCollision(new THREE.Vector3(mesh.position.x, defaultCameraHeight, mesh.position.z))) mesh.position.x = oldX; 
+                        
+                        mesh.position.z = newPos.z;
+                        if(checkCollision(new THREE.Vector3(mesh.position.x, defaultCameraHeight, mesh.position.z))) mesh.position.z = oldZ;
+                        
+                        // Kolizja z graczem
+                        if(!isDodging) {
+                            const dist = new THREE.Vector2(camera.position.x, camera.position.z)
+                                         .distanceTo(new THREE.Vector2(mesh.position.x, mesh.position.z));
+                            if(dist < 1.0) {
+                                document.getElementById('visor-overlay').style.backgroundColor = 'rgba(255,100,0,0.8)'; // Inny kolor dla pościgowca
+                                setTimeout(() => {
+                                    document.getElementById('visor-overlay').style.backgroundColor = '';
+                                    regenerateLevel(); 
+                                }, 100);
+                            }
+                        }
+                    }
+                    
+                    // Reakcja na dash
+                    if(isDodging) {
+                        const dist = new THREE.Vector2(camera.position.x, camera.position.z)
+                                     .distanceTo(new THREE.Vector2(mesh.position.x, mesh.position.z));
+                        if(dist < 1.5 && !p.isStunned) {
+                            // "Oszołomienie" - zatrzymanie pościgowca na krótki czas
+                            p.isStunned = true;
+                            p.stunTimer = 1.5; // Stun na 1.5 sekundy
+                            mesh.material.color.setHex(0xaaaaaa); // Zmiana koloru na szary/biały
+                            mesh.material.emissive.setHex(0x222222); 
+                        }
+                    }
+                    
+                    if (p.isStunned) {
+                        p.stunTimer -= delta;
+                        if(p.stunTimer <= 0) {
+                            p.isStunned = false;
+                            mesh.material.color.setHex(0xffff00);
+                            mesh.material.emissive.setHex(0x888800);
+                        }
+                    }
+                });
+                
+                // KONIEC LOGIKI POŚCIGOWCÓW
 
                 const actualSpeed = CONFIG.walkSpeed; 
 
