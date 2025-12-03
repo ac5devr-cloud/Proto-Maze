@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0"> 
-    <title>PROTO MAZE v3.4 - AUDIO FIX</title>
+    <title>PROTO MAZE v3.5 - MAZE UPDATE</title>
     <style>
         body { margin: 0; overflow: hidden; background: #000; font-family: 'Courier New', monospace; touch-action: none; user-select: none; -webkit-user-select: none; }
         :root {
@@ -263,6 +263,10 @@
                 <input type="range" id="sens-input" min="0.1" max="3.0" step="0.1" value="1.0">
             </div>
             <div class="setting-row">
+                <span>MUSIC:</span>
+                <input type="checkbox" id="music-input" checked>
+            </div>
+            <div class="setting-row">
                 <span>LOW QUALITY:</span>
                 <input type="checkbox" id="gfx-input">
             </div>
@@ -283,7 +287,7 @@
         const CONFIG = {
             // !!! DEV MINIMAP TOGGLE !!!
             // Set this to TRUE to see the map on level 1.
-            DEV_SHOW_MINIMAP: false, 
+            DEV_SHOW_MINIMAP: true, 
             
             wallHeight: 3.5, cellSize: 3.0, walkSpeed: 6.0, playerRadius: 0.4,
             jumpForce: 6.0, gravity: 15.0, viewBobSpeed: 12, viewBobHeight: 0.1,
@@ -488,7 +492,7 @@
             if (!isMobile) controls.lock(); // This triggers the 'lock' event which handles UI
             else {
                 isPaused = false;
-                if(gameMusic && musicStarted) gameMusic.play().catch(e=>console.log(e));
+                if(gameMusic && musicStarted && !gameMusic.muted) gameMusic.play().catch(e=>console.log(e));
                 document.getElementById('center-info').classList.add('hidden');
             }
         }
@@ -557,6 +561,7 @@
             const settingsBtn = document.getElementById('settings-btn');
             const settingsPanel = document.getElementById('settings-panel');
             const sensInput = document.getElementById('sens-input');
+            const musicInput = document.getElementById('music-input');
             const gfxInput = document.getElementById('gfx-input');
             const closeSettingsBtn = document.getElementById('close-settings-btn');
             
@@ -593,6 +598,12 @@
                 applySettings();
             });
 
+            musicInput.addEventListener('change', (e) => {
+                if(gameMusic) {
+                    gameMusic.muted = !e.target.checked;
+                }
+            });
+
             gfxInput.addEventListener('change', (e) => {
                 lowGraphics = e.target.checked;
                 applySettings();
@@ -603,7 +614,7 @@
                 if (e && e.cancelable) e.preventDefault();
                 
                 // 1. Try to play audio immediately on click
-                if(gameMusic) {
+                if(gameMusic && !gameMusic.muted) {
                     gameMusic.play()
                         .then(() => {
                             musicStarted = true;
@@ -632,7 +643,7 @@
                 isPaused = false;
                 
                 // Resume music if it was started before
-                if(gameMusic && musicStarted && gameMusic.paused) {
+                if(gameMusic && musicStarted && gameMusic.paused && !gameMusic.muted) {
                     gameMusic.play().catch(e => console.log(e));
                 }
 
@@ -857,8 +868,11 @@
 
             updateEnvironment(level);
             
-            // Randomly increase size slightly every 5 levels
-            const baseSize = 13 + Math.floor(level / 5) * 4;
+            // --- UPDATED LEVEL GROWTH LOGIC ---
+            // Base size 13. Adds +2 width/height for every level completed.
+            // Level 1: 13, Level 2: 15, Level 3: 17...
+            const baseSize = 13 + ((level - 1) * 2);
+
             grid = createRandomMaze(baseSize, baseSize);
             
             mazeHeight = grid.length;
