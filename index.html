@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0"> 
-    <title>PROTO MAZE v3.3 - AUDIO ENABLED</title>
+    <title>PROTO MAZE v3.4 - AUDIO FIX</title>
     <style>
         body { margin: 0; overflow: hidden; background: #000; font-family: 'Courier New', monospace; touch-action: none; user-select: none; -webkit-user-select: none; }
         :root {
@@ -333,6 +333,7 @@
         
         const playerCollider = new THREE.Box3();
         let gameMusic;
+        let musicStarted = false; // Flag to track if we successfully started music
 
         function formatTime(ms) {
             const m = Math.floor(ms / 60000);
@@ -487,7 +488,7 @@
             if (!isMobile) controls.lock(); // This triggers the 'lock' event which handles UI
             else {
                 isPaused = false;
-                if(gameMusic) gameMusic.play().catch(e=>console.log(e));
+                if(gameMusic && musicStarted) gameMusic.play().catch(e=>console.log(e));
                 document.getElementById('center-info').classList.add('hidden');
             }
         }
@@ -597,12 +598,19 @@
                 applySettings();
             });
 
+            // --- USER INTERACTION START HANDLER ---
             const startGameHandler = (e) => {
                 if (e && e.cancelable) e.preventDefault();
                 
-                // --- ATTEMPT AUDIO START ---
-                if(gameMusic && gameMusic.paused) {
-                    gameMusic.play().catch(err => console.log("Audio autoplay prevented", err));
+                // 1. Try to play audio immediately on click
+                if(gameMusic) {
+                    gameMusic.play()
+                        .then(() => {
+                            musicStarted = true;
+                        })
+                        .catch(err => {
+                            console.warn("Audio autoplay blocked or file missing:", err);
+                        });
                 }
 
                 if (isPaused) { requestResume(); return; }
@@ -622,17 +630,24 @@
             controls.addEventListener('lock', () => {
                 instructions.classList.add('hidden');
                 isPaused = false;
-                if(gameMusic) gameMusic.play().catch(e=>{}); // Resume music
+                
+                // Resume music if it was started before
+                if(gameMusic && musicStarted && gameMusic.paused) {
+                    gameMusic.play().catch(e => console.log(e));
+                }
+
                 isControlsModalOpen = false;
                 document.getElementById('controls-modal').style.display = 'none';
                 if (!isGameRunning) { gameStartTime = performance.now(); isGameRunning = true; }
             });
 
             controls.addEventListener('unlock', () => {
-                resetInputs(); // CRITICAL FIX: Reset WASD flags when pausing
+                resetInputs(); 
                 if(!isMobile && isGameRunning) {
                     isPaused = true;
-                    if(gameMusic) gameMusic.pause(); // Pause music
+                    // Pause music
+                    if(gameMusic) gameMusic.pause();
+                    
                     instructions.classList.remove('hidden');
                     startBtn.innerText = "RESUME";
                     settingsPanel.style.display = 'none';
