@@ -2,20 +2,15 @@
 <html lang="pl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PROTO MAZE v1.7 - UNSTABLE (HOLES ADDED)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0"> 
+    <title>PROTO MAZE v3.2 - STABLE</title>
     <style>
-        /* --- BAZA --- */
-        body { margin: 0; overflow: hidden; background: #000; font-family: 'Courier New', monospace; }
-        
-        /* --- PROTOGEN HUD STYLING --- */
+        body { margin: 0; overflow: hidden; background: #000; font-family: 'Courier New', monospace; touch-action: none; user-select: none; -webkit-user-select: none; }
         :root {
-            --proto-color: #00f3ff; /* Neon Cyan */
+            --proto-color: #00f3ff;
             --proto-dim: rgba(0, 243, 255, 0.2);
             --danger-color: #ff0040;
         }
-
-        /* Warstwa interfejsu */
         #ui-layer { 
             position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
             pointer-events: none; 
@@ -23,18 +18,13 @@
             padding: 30px; box-sizing: border-box; 
             z-index: 10;
         }
-
-        /* Efekt wizjera */
         #visor-overlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             pointer-events: none;
             z-index: 5;
             background: radial-gradient(circle, rgba(0,0,0,0) 60%, rgba(0,20,40,0.6) 90%, #000 100%);
             box-shadow: inset 0 0 80px var(--proto-dim);
-            transition: background-color 0.1s;
         }
-        
-        /* Linie skanowania */
         #scanlines {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             pointer-events: none;
@@ -43,8 +33,6 @@
             background-size: 100% 4px, 6px 100%;
             opacity: 0.8;
         }
-
-        /* Teksty HUD */
         .hud-text { 
             color: var(--proto-color); 
             text-shadow: 0 0 5px var(--proto-color); 
@@ -53,8 +41,6 @@
             letter-spacing: 2px;
             text-transform: uppercase;
         }
-
-        /* Minimapa */
         #minimap-container {
             position: relative;
             border: 2px solid var(--proto-color);
@@ -64,12 +50,6 @@
             padding: 5px;
             display: none; 
         }
-        #minimap-label {
-            position: absolute; bottom: -20px; right: 0; 
-            font-size: 10px; color: var(--proto-color); opacity: 0.7;
-        }
-
-        /* Nowy kontener na Logo */
         #logo-container {
             display: none; 
             text-align: right;
@@ -80,30 +60,14 @@
             padding: 10px 15px;
         }
         #logo-container .div-name {
-            font-size: 14px;
-            color: var(--proto-color);
-            opacity: 0.8;
-            letter-spacing: 3px;
-            margin-bottom: 5px;
+            font-size: 14px; color: var(--proto-color); opacity: 0.8; letter-spacing: 3px; margin-bottom: 5px;
         }
         #logo-container .div-logo {
-            font-size: 24px;
-            color: #fff;
-            text-shadow: 0 0 10px var(--proto-color);
-            line-height: 1;
+            font-size: 24px; color: #fff; text-shadow: 0 0 10px var(--proto-color); line-height: 1;
         }
-
-        /* Dolny pasek statusu */
-        .status-area {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
+        .status-area { display: flex; flex-direction: column; gap: 10px; }
         .status-bar {
-            display: flex;
-            align-items: center;
-            gap: 10px;
+            display: flex; align-items: center; gap: 15px;
             background: linear-gradient(90deg, transparent, rgba(0, 243, 255, 0.1), transparent);
             padding: 5px 10px;
         }
@@ -113,152 +77,204 @@
             box-shadow: 0 0 8px var(--proto-color);
             transform: skewX(-20deg);
             opacity: 0.8;
+            transition: opacity 0.2s, background 0.1s linear;
         }
-
-        /* Pasek Cooldownu zdolności */
-        #ability-bar-container {
-            width: 200px; height: 8px;
-            background: rgba(0,0,0,0.5);
-            border: 1px solid var(--proto-color);
-            transform: skewX(-20deg);
-            margin-left: 10px;
-            position: relative;
-        }
-        #ability-fill {
-            width: 100%; height: 100%;
-            background: var(--proto-color);
-            box-shadow: 0 0 10px var(--proto-color);
-            transform-origin: left;
-            transition: width 0.1s linear;
-        }
-        #ability-text {
-            font-size: 12px; color: var(--proto-color); margin-left: 10px;
-        }
-
-        /* Środkowe info */
         #center-info { 
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); 
             text-align: center; color: white; 
-            background: rgba(0, 10, 15, 0.9); 
+            background: rgba(0, 10, 15, 0.95); 
             padding: 40px; 
             border: 1px solid var(--proto-color); 
             box-shadow: 0 0 30px var(--proto-dim), inset 0 0 20px var(--proto-dim);
-            pointer-events: auto; cursor: pointer; 
+            pointer-events: auto; 
             z-index: 20;
             clip-path: polygon(10% 0, 100% 0, 100% 90%, 90% 100%, 0 100%, 0 10%);
         }
-
-        /* Celownik */
+        .proto-btn {
+            background: rgba(0, 243, 255, 0.1);
+            border: 2px solid var(--proto-color);
+            color: var(--proto-color);
+            padding: 15px 30px;
+            font-family: 'Courier New', monospace;
+            font-size: 1.2em;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: all 0.2s;
+            box-shadow: 0 0 10px var(--proto-dim);
+            text-transform: uppercase;
+        }
+        .proto-btn:hover { background: var(--proto-color); color: #000; box-shadow: 0 0 20px var(--proto-color); }
         #crosshair { 
-            position: absolute; top: 50%; left: 50%; 
-            width: 20px; height: 20px; 
-            transform: translate(-50%, -50%); 
-            pointer-events: none; z-index: 15;
+            position: absolute; top: 50%; left: 50%; width: 20px; height: 20px; 
+            transform: translate(-50%, -50%); pointer-events: none; z-index: 15;
         }
         #crosshair::before, #crosshair::after {
             content: ''; position: absolute; background: var(--proto-color); box-shadow: 0 0 5px var(--proto-color);
         }
         #crosshair::before { top: 9px; left: 0; width: 20px; height: 2px; }
         #crosshair::after { top: 0; left: 9px; width: 2px; height: 20px; }
-
-        /* Stan uniku */
         .phasing #visor-overlay {
             box-shadow: inset 0 0 100px rgba(0, 255, 100, 0.5);
             background: radial-gradient(circle, rgba(0,255,100,0.1) 0%, rgba(0,20,40,0.6) 90%, #000 100%);
         }
-        .phasing .hud-text, .phasing .bar-segment, .phasing #ability-fill {
-            filter: hue-rotate(90deg);
-        }
-
+        .phasing .hud-text, .phasing .bar-segment { filter: hue-rotate(90deg); }
         .hidden { display: none !important; }
         kbd { border: 1px solid var(--proto-color); color: var(--proto-color); padding: 2px 6px; box-shadow: 0 0 5px var(--proto-dim); background: transparent; font-size: 0.9em;}
+        
+        #mobile-controls {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 12; pointer-events: none; display: none; 
+        }
+        @media (hover: none) and (pointer: coarse) {
+            #mobile-controls { display: block; }
+            .status-area .hud-text { display: none; } 
+            #mobile-top-ui { display: flex !important; }
+        }
+        .joy-zone {
+            position: absolute; bottom: 50px; left: 50px; width: 150px; height: 150px;
+            background: rgba(0, 243, 255, 0.1); border: 2px solid rgba(0, 243, 255, 0.3);
+            border-radius: 50%; pointer-events: auto; touch-action: none;
+        }
+        .joy-knob {
+            position: absolute; top: 50%; left: 50%; width: 60px; height: 60px;
+            background: rgba(0, 243, 255, 0.5); border-radius: 50%;
+            transform: translate(-50%, -50%); box-shadow: 0 0 15px var(--proto-color); pointer-events: none;
+        }
+        .mobile-btn-container {
+            position: absolute; bottom: 60px; right: 40px; display: flex; flex-direction: column; gap: 20px; pointer-events: auto;
+        }
+        .mob-btn {
+            width: 70px; height: 70px; background: rgba(0, 20, 30, 0.6);
+            border: 2px solid var(--proto-color); border-radius: 50%; color: var(--proto-color);
+            font-weight: bold; font-size: 14px; display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 0 10px var(--proto-dim); touch-action: manipulation; user-select: none; pointer-events: auto;
+        }
+        .mob-btn:active { background: var(--proto-color); color: #000; }
+
+        #mobile-top-ui {
+            position: absolute; top: 20px; right: 20px; left: 20px;
+            display: none; justify-content: space-between; pointer-events: none; z-index: 25;
+        }
+        .mini-btn {
+            width: 40px; height: 40px; background: rgba(0, 243, 255, 0.1);
+            border: 2px solid var(--proto-color); color: var(--proto-color);
+            display: flex; align-items: center; justify-content: center;
+            font-weight: bold; pointer-events: auto; cursor: pointer;
+            box-shadow: 0 0 10px var(--proto-dim);
+        }
+        .mini-btn:active, .mini-btn:hover { background: var(--proto-color); color: #000; }
+
+        #settings-panel {
+            display: none; flex-direction: column; gap: 15px; margin-top: 20px; text-align: left;
+            border-top: 1px solid var(--proto-dim); padding-top: 20px;
+        }
+        .setting-row { display: flex; justify-content: space-between; align-items: center; }
+        input[type=range] { width: 100px; accent-color: var(--proto-color); }
+        input[type=checkbox] { accent-color: var(--proto-color); width: 20px; height: 20px; }
+
+        #controls-hint {
+            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
+            color: var(--proto-color); font-size: 14px; opacity: 0.7; z-index: 10;
+        }
+        #controls-modal {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: rgba(0, 15, 20, 0.95); border: 2px solid var(--proto-color);
+            padding: 30px; z-index: 50; display: none; text-align: center;
+            box-shadow: 0 0 40px var(--proto-dim);
+        }
     </style>
 </head>
 <body>
-
-    <audio id="game-music" loop>
+        <audio id="game-music" loop>
         <source src="proto_maze.mp3" type="audio/mpeg">
         Twoja przeglądarka nie obsługuje elementu audio.
     </audio>
+
+    <div id="mobile-top-ui">
+        <div style="flex:1;"></div>
+        <div class="mini-btn" id="mob-pause-btn" style="margin-right: auto; margin-left: auto;">||</div>
+        <div style="flex:1; display:flex; justify-content: flex-end; gap: 10px;">
+            <div class="mini-btn" id="fullscreen-btn">&#x26F6;</div>
+        </div>
+    </div>
+
+    <div id="controls-modal">
+        <h2 style="color:var(--proto-color); margin-bottom:20px;">// SYSTEM CONTROLS //</h2>
+        <div style="text-align: left; line-height: 2em; color: #fff;">
+            <p><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> - MOVE</p>
+            <p><kbd>SPACE</kbd> - JUMP</p>
+            <p><kbd>SHIFT</kbd> - PHASE SHIFT (DASH)</p>
+            <p><kbd>O</kbd> - FULLSCREEN</p>
+            <p><kbd>ESC</kbd> - PAUSE</p>
+            <p><kbd>I</kbd> - CLOSE THIS MENU</p>
+        </div>
+        <button id="close-controls-btn" class="proto-btn" style="margin-top:20px;">ACKNOWLEDGE</button>
+    </div>
+
     <div id="visor-overlay"></div>
     <div id="scanlines"></div>
     <div id="crosshair"></div>
 
     <div id="ui-layer">
         <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-            
             <div>
                 <div class="hud-text" id="level-display">ZONE: 1</div>
-                <div style="font-size:12px; color:cyan; opacity:0.6;">/// SECURE CONNECTION ///</div>
-                
+                <div style="font-size:12px; color:cyan; opacity:0.6;">/// ROGUE PROTOCOL ///</div>
                 <div class="hud-text" id="timer-display" style="font-size: 16px; opacity: 0.8; margin-top: 10px;">TIME: 00:00.000</div>
                 <div class="hud-text" id="highscore-display" style="font-size: 16px; opacity: 0.8; margin-top: 5px;">HIGH: ZONE 1</div>
             </div>
-            
             <div id="minimap-container">
                 <canvas id="minimap" width="150" height="150"></canvas>
-                <div id="minimap-label">DEV_RADAR</div>
             </div>
-            
             <div id="logo-container">
                 <div class="div-name">PRIME FOX RESEARCH DIVISION</div>
-                <div class="div-logo">
-                    <span style="color: var(--danger-color);">P</span>
-                    <span style="color: white;">/F</span>
-                </div>
+                <div class="div-logo"><span style="color: var(--danger-color);">P</span><span style="color: white;">/F</span></div>
             </div>
-            </div>
-
+        </div>
         <div class="status-area">
-            <div style="display: flex; align-items: center;">
-                <span id="ability-text">[F] PHASE SHIFT</span>
-                <div id="ability-bar-container">
-                    <div id="ability-fill"></div>
-                </div>
-            </div>
             <div class="status-bar">
-                <div class="hud-text" style="font-size: 12px;">INTEGRITY:</div>
-                <div class="bar-segment"></div>
-                <div class="bar-segment"></div>
-                <div class="bar-segment" style="opacity:0.3"></div>
+                <div class="hud-text" style="font-size: 12px;">PHASE:</div>
+                <div class="bar-segment" id="bar-seg-1"></div>
+                <div class="bar-segment" id="bar-seg-2"></div>
+                <div class="bar-segment" id="bar-seg-3"></div>
             </div>
-            <div class="hud-text" style="font-size: 12px; margin-top: 10px; opacity: 0.8; text-align: left;">
-                [<kbd>WASD</kbd> MOVE] [<kbd>SPACE</kbd> JUMP] [<kbd>F</kbd> DODGE/DASH]
-            </div>
+        </div>
+        <div id="controls-hint">[ I - CONTROLS ]</div>
+    </div>
+
+    <div id="mobile-controls">
+        <div class="joy-zone" id="joy-base"><div class="joy-knob" id="joy-stick"></div></div>
+        <div class="mobile-btn-container">
+            <div class="mob-btn" id="btn-jump">JUMP</div>
+            <div class="mob-btn" id="btn-dash">PHASE</div>
         </div>
     </div>
 
     <div id="center-info">
         <h1 style="margin:0 0 10px 0; color: #00f3ff; text-shadow: 0 0 15px cyan; font-size: 3em;">PROTO MAZE</h1>
         <p style="font-family: monospace;">> Initialize Neural Link...</p>
-        <p style="font-size: 0.8em; color: #aaa;">(Click to Engage System)</p>
+        <br>
+        <button id="start-btn" class="proto-btn">START SYSTEM</button>
+        <button id="settings-btn" class="proto-btn" style="margin-left: 10px;">SETTINGS</button>
 
-        <p style="margin-top: 30px; font-size: 1em; color: var(--proto-color); cursor: pointer; border: 1px solid var(--proto-dim); padding: 5px 10px;" id="lore-button">
-            [ Show Info ]
-        </p>
-    </div>
-
-    <div id="lore-screen" class="hidden" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 10, 15, 0.95); z-index: 30; color: var(--proto-color); padding: 5%; box-sizing: border-box; font-family: 'Courier New', monospace; overflow-y: auto; text-align: center;">
-        
-        <div style="max-width: 800px; margin: auto; text-align: left;">
-            <h1 style="text-shadow: 0 0 15px cyan;">// Basic Info: 77-B //</h1>
-            <div id="lore-content" style="font-size: 1.1em; line-height: 1.8;">
-                </div>
+        <div id="settings-panel">
+            <div class="setting-row">
+                <span>SENSITIVITY: <span id="sens-val">1.0</span></span>
+                <input type="range" id="sens-input" min="0.1" max="3.0" step="0.1" value="1.0">
+            </div>
+            <div class="setting-row">
+                <span>LOW QUALITY:</span>
+                <input type="checkbox" id="gfx-input">
+            </div>
+            <div class="setting-row" style="justify-content: center; margin-top: 10px;">
+                <button id="close-settings-btn" class="proto-btn" style="padding: 10px 20px; font-size: 1em;">BACK</button>
+            </div>
         </div>
-
-        <p id="lore-close-button" style="margin-top: 40px; font-size: 1.2em; cursor: pointer; text-align: center; border: 1px solid var(--proto-color); padding: 10px; display: inline-block;">
-            [ RETURN TO INTERFACE ]
-        </p>
     </div>
-
 
     <script type="importmap">
-        {
-            "imports": {
-                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
-            }
-        }
+        { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/" } }
     </script>
 
     <script type="module">
@@ -266,146 +282,260 @@
         import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
 
         const CONFIG = {
+            // !!! DEV MINIMAP TOGGLE !!!
+            // Set this to TRUE to see the map on level 1.
             DEV_SHOW_MINIMAP: false, 
-            wallHeight: 3.5,
-            cellSize: 3.0,
-            walkSpeed: 6.0,
-            playerRadius: 0.5,
-            jumpForce: 6.0,
-            gravity: 15.0,
-            viewBobSpeed: 12,
-            viewBobHeight: 0.1,
             
-            // Konfiguracja wrogów
-            enemyStartLevel: 5,  
-            enemyCountBase: 2,
-            dodgeDuration: 0.4, 
-            dodgeCooldown: 3.0,
-            
-            // Konfiguracja Dash
-            dashForce: 15.0, 
-            dashTime: 0.2, 
-            
-            // Konfiguracja dziur
-            HOLE_CHANCE: 0.08, 
-            FALL_HEIGHT: -5.0,
-            
-            // ZMIENIONE: Konfiguracja Pościgowca
-            PURSUER_START_LEVEL: 25, // NOWE: Pościgowce startują od poziomu 25
-            PURSUER_CHANCE: 0.01, // ZMIENIONE: Szansa na spawn (1%)
-            PURSUER_SPEED: 4.0 
+            wallHeight: 3.5, cellSize: 3.0, walkSpeed: 6.0, playerRadius: 0.4,
+            jumpForce: 6.0, gravity: 15.0, viewBobSpeed: 12, viewBobHeight: 0.1,
+            dodgeDuration: 0.4, dashForce: 15.0, dashTime: 0.2,
+            dashRechargeTime: 4.0, maxDashCharges: 3,
+            FALL_HEIGHT: -15.0 
         };
-
-        const LORE_TEXT = `
-        <p>> SYSTEM STATUS: CRITICAL.</p>
-        <p>> UNIT: 734 (TY). OBJECTIVE: <span style="color:#ff0040">UNKNOWN</span>. LAST DIRECTIVE: <span style="color:#ff0040;">UNKNOWN</span>.</p>
-        <p> </p>
-        <p>> General Control Info</p>
-        <p> </p>
-        <p> "Basic Movement" <kbd>W</kbd> <kbd>S</kbd> <kbd>A</kbd> <kbd>D</kbd> </p>
-        <p> </p>
-        <p> "Jumping" <kbd>Space</kbd> </p>
-        <p> "Phase Shift" [<kbd>F</kbd>] </p>
-        <p>> END OF TRANSMISSION.</p>
-        `;
-
-        // --- ZMIENNE ---
+        
         let scene, camera, renderer, controls;
-        let walls = [], enemies = [], pursuers = [], goalObj = null; 
+        let walls = [], enemies = [], goalObj = null;
         let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
         let canJump = false; 
         let velocityY = 0;
-        
         let gameStartTime = 0;
         let isGameRunning = false;
+        let isPaused = false;
         let highScore = localStorage.getItem('protoMazeHighScore') || 1;
-        
         let isDodging = false;
-        let dodgeTimer = 0;
-        let cooldownTimer = 0;
-        
-        // Dash variables
+        let dodgeTimer = 0, dashTimer = 0;
+        let dashCharges = 3;
+        let dashRechargeTimer = 0;
+        let barSegments = [];
         let dashVector = new THREE.Vector3();
-        let dashTimer = 0;
-
-        // Audio
-        let gameMusic = null; 
-
-        const abilityFill = document.getElementById('ability-fill');
-        const abilityText = document.getElementById('ability-text');
-        
         let prevTime = performance.now();
         let direction = new THREE.Vector3();
-        
         let level = 1;
-        let mazeWidth = 11;
-        let mazeHeight = 11;
+        let mazeWidth = 0, mazeHeight = 0;
         let grid = [];
         let bobTimer = 0;
         const defaultCameraHeight = 1.6;
-
         const minimapCanvas = document.getElementById('minimap');
         const minimapCtx = minimapCanvas.getContext('2d');
 
-        // Geometria wroga (shared)
-        const enemyGeo = new THREE.IcosahedronGeometry(0.5, 0); 
+        let joystick = { x: 0, y: 0 };
+        let joyTouchId = -1;
+        let isMobile = false;
+        let lookSpeed = 1.5;
+        let isLooking = false; 
+        let gamepadIndex = null;
+        const GAMEPAD_DEADZONE = 0.15; 
+        const GAMEPAD_LOOK_SPEED = 0.05; 
+        let prevGamepadState = {}; 
+
+        let isControlsModalOpen = false;
+        let sensitivity = 1.0;
+        let lowGraphics = false;
         
+        const playerCollider = new THREE.Box3();
+
         function formatTime(ms) {
-            const minutes = Math.floor(ms / 60000);
-            const seconds = Math.floor((ms % 60000) / 1000);
-            const milliseconds = ms % 1000;
-            return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(milliseconds).padStart(3, '0')}`;
+            const m = Math.floor(ms / 60000);
+            const s = Math.floor((ms % 60000) / 1000);
+            const mi = ms % 1000;
+            return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}.${String(mi).padStart(3,'0')}`;
         }
 
         init();
-        animate();
+        animate(performance.now());
+
+        // --- RANDOM MAZE GENERATION ---
+        function createRandomMaze(w, h) {
+            // Ensure odd dimensions
+            const width = w % 2 === 0 ? w + 1 : w;
+            const height = h % 2 === 0 ? h + 1 : h;
+            
+            // Fill with walls
+            const map = [];
+            for(let y=0; y<height; y++) {
+                let row = [];
+                for(let x=0; x<width; x++) row.push('#');
+                map.push(row);
+            }
+
+            // Recursive Backtracker
+            const stack = [];
+            const startX = 1;
+            const startY = 1;
+            map[startY][startX] = '.';
+            stack.push({x: startX, y: startY});
+
+            const dirs = [
+                {x: 0, y: -2}, // N
+                {x: 0, y: 2},  // S
+                {x: 2, y: 0},  // E
+                {x: -2, y: 0}  // W
+            ];
+
+            function shuffle(array) {
+                for (let i = array.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [array[i], array[j]] = [array[j], array[i]];
+                }
+            }
+
+            while(stack.length > 0) {
+                const current = stack[stack.length - 1];
+                const neighbors = [];
+
+                shuffle(dirs);
+                
+                for(let d of dirs) {
+                    const nx = current.x + d.x;
+                    const ny = current.y + d.y;
+                    if(nx > 0 && nx < width - 1 && ny > 0 && ny < height - 1) {
+                        if(map[ny][nx] === '#') {
+                            neighbors.push({x: nx, y: ny, dx: d.x/2, dy: d.y/2});
+                        }
+                    }
+                }
+
+                if(neighbors.length > 0) {
+                    const next = neighbors[0];
+                    map[next.y][next.x] = '.';
+                    map[current.y + next.dy][current.x + next.dx] = '.'; // Carve wall between
+                    stack.push({x: next.x, y: next.y});
+                } else {
+                    stack.pop();
+                }
+            }
+
+            // Place Player
+            map[1][1] = 'P';
+
+            // Place Goal (simple logic: random empty spot far from start, or bottom right area)
+            let goalPlaced = false;
+            for(let y = height-2; y > height/2; y--) {
+                for(let x = width-2; x > width/2; x--) {
+                    if(map[y][x] === '.') {
+                        map[y][x] = 'G';
+                        goalPlaced = true;
+                        break;
+                    }
+                }
+                if(goalPlaced) break;
+            }
+            if(!goalPlaced) map[height-2][width-2] = 'G'; // Fallback
+
+            return map;
+        }
 
         function generateTexture(color, type = 'grid') {
             const canvas = document.createElement('canvas');
             canvas.width = 512; canvas.height = 512;
             const ctx = canvas.getContext('2d');
             ctx.fillStyle = color; ctx.fillRect(0,0,512,512);
-
             if (type === 'grid') {
                 ctx.strokeStyle = '#004444'; ctx.lineWidth = 4;
-                ctx.strokeRect(0,0,512,512);
-                ctx.fillStyle = '#001111'; ctx.fillRect(10,10, 492, 492);
+                ctx.strokeRect(0,0,512,512); ctx.fillStyle = '#001111'; ctx.fillRect(10,10, 492, 492);
             } else if (type === 'brick') {
                 ctx.fillStyle = '#0a0a0a'; ctx.fillRect(0,0,512,512);
                 ctx.strokeStyle = '#00f3ff'; ctx.lineWidth = 2;
-                for(let y=0; y<512; y+=64) {
-                    for(let x=0; x<512; x+=64) {
-                        ctx.strokeRect(x,y,64,64);
-                        if(Math.random()>0.8) {
-                            ctx.fillStyle = 'rgba(0, 243, 255, 0.2)';
-                            ctx.fillRect(x+4,y+4,56,56);
-                        }
-                    }
+                for(let y=0;y<512;y+=64) for(let x=0;x<512;x+=64) {
+                    ctx.strokeRect(x,y,64,64); if(Math.random()>0.8) { ctx.fillStyle = 'rgba(0, 243, 255, 0.2)'; ctx.fillRect(x+4,y+4,56,56); }
                 }
             }
-            const tex = new THREE.CanvasTexture(canvas);
-            tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
-            return tex;
+            const tex = new THREE.CanvasTexture(canvas); tex.wrapS = tex.wrapT = THREE.RepeatWrapping; return tex;
+        }
+        
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(e=>{});
+            else if (document.exitFullscreen) document.exitFullscreen();
+        }
+
+        function toggleControlsModal(forceState = null) {
+            const modal = document.getElementById('controls-modal');
+            const newState = forceState !== null ? forceState : (modal.style.display === 'none' || modal.style.display === '');
+            
+            if (newState) {
+                modal.style.display = 'block';
+                isControlsModalOpen = true;
+                if(!isPaused && !isMobile) controls.unlock();
+            } else {
+                modal.style.display = 'none';
+                isControlsModalOpen = false;
+                if(isGameRunning && !isPaused && !isMobile) controls.lock(); 
+            }
+        }
+
+        // RESET MOVEMENT FLAGS TO PREVENT BUG
+        function resetInputs() {
+            moveForward = false;
+            moveBackward = false;
+            moveLeft = false;
+            moveRight = false;
+        }
+
+        function requestPause() {
+            if (!isMobile) controls.unlock(); // This triggers the 'unlock' event which handles UI and Resets inputs
+            else {
+                isPaused = true;
+                resetInputs(); // Manually reset for mobile if needed
+                const centerInfo = document.getElementById('center-info');
+                centerInfo.classList.remove('hidden');
+                document.getElementById('start-btn').innerText = "RESUME";
+            }
+        }
+
+        function requestResume() {
+            if (!isMobile) controls.lock(); // This triggers the 'lock' event which handles UI
+            else {
+                isPaused = false;
+                document.getElementById('center-info').classList.add('hidden');
+            }
+        }
+
+        function applySettings() {
+            if (controls) controls.pointerSpeed = sensitivity;
+            
+            if (lowGraphics) {
+                renderer.shadowMap.enabled = false;
+                renderer.setPixelRatio(0.8);
+                document.getElementById('scanlines').style.display = 'none';
+            } else {
+                renderer.shadowMap.enabled = true;
+                renderer.setPixelRatio(window.devicePixelRatio);
+                document.getElementById('scanlines').style.display = 'block';
+            }
+            
+            scene.traverse(obj => {
+                if (obj.isMesh && obj.material) obj.material.needsUpdate = true;
+            });
+        }
+
+        function updateDashUI() {
+            for (let i = 0; i < CONFIG.maxDashCharges; i++) {
+                if (i < dashCharges) {
+                    barSegments[i].style.opacity = 0.8;
+                    barSegments[i].style.background = 'var(--proto-color)';
+                } else {
+                    barSegments[i].style.opacity = 0.3;
+                    barSegments[i].style.background = 'rgba(0,0,0,0.5)';
+                }
+            }
+            
+            if (dashCharges < CONFIG.maxDashCharges) {
+                const progress = 1.0 - (dashRechargeTimer / CONFIG.dashRechargeTime);
+                barSegments[dashCharges].style.opacity = 0.8;
+                barSegments[dashCharges].style.background = `linear-gradient(to right, var(--proto-color) ${progress * 100}%, rgba(0,0,0,0.5) ${progress * 100}%)`;
+            }
         }
 
         function init() {
             scene = new THREE.Scene();
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 150);
-            camera.position.y = defaultCameraHeight;
+            camera.position.y = defaultCameraHeight; camera.rotation.order = 'YXZ';
 
-            const ambientLight = new THREE.AmbientLight(0x404040); 
-            scene.add(ambientLight);
-
+            const ambientLight = new THREE.AmbientLight(0x404040); scene.add(ambientLight);
             const flashLight = new THREE.SpotLight(0xaaffff, 4.0);
-            flashLight.position.set(0.3, -0.3, 0);
-            flashLight.angle = Math.PI / 5; flashLight.penumbra = 0.5; flashLight.distance = 40;
-            flashLight.castShadow = true;
-            camera.add(flashLight);
-            
-            const targetObj = new THREE.Object3D();
-            targetObj.position.set(0, 0, -5);
-            camera.add(targetObj);
-            flashLight.target = targetObj;
+            flashLight.position.set(0.3, -0.3, 0); flashLight.angle = Math.PI / 5; flashLight.penumbra = 0.5; flashLight.distance = 40;
+            flashLight.castShadow = true; camera.add(flashLight);
+            const targetObj = new THREE.Object3D(); targetObj.position.set(0, 0, -5); camera.add(targetObj); flashLight.target = targetObj;
             scene.add(camera);
 
             renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -416,642 +546,549 @@
 
             controls = new PointerLockControls(camera, document.body);
             
-            // BLOK - STARTOWANIE TIMERA I MUZYKI (W ŚRODKU)
+            regenerateLevel();
+            
             const instructions = document.getElementById('center-info');
-            gameMusic = document.getElementById('game-music'); 
+            const startBtn = document.getElementById('start-btn');
+            const fullscreenBtn = document.getElementById('fullscreen-btn');
+            const settingsBtn = document.getElementById('settings-btn');
+            const settingsPanel = document.getElementById('settings-panel');
+            const sensInput = document.getElementById('sens-input');
+            const gfxInput = document.getElementById('gfx-input');
+            const closeSettingsBtn = document.getElementById('close-settings-btn');
+            
+            barSegments = [
+                document.getElementById('bar-seg-1'),
+                document.getElementById('bar-seg-2'),
+                document.getElementById('bar-seg-3')
+            ];
+            updateDashUI();
 
-            instructions.addEventListener('click', () => {
-                controls.lock();
-                if (!isGameRunning) { 
-                    gameStartTime = performance.now();
-                    isGameRunning = true;
-                    
-                    // Uruchomienie muzyki po pierwszym kliknięciu
-                    if (gameMusic) {
-                        gameMusic.volume = 0.4; 
-                        gameMusic.play().catch(error => {
-                            console.warn("Automatyczne odtwarzanie zablokowane.");
-                        });
+            isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            fullscreenBtn.addEventListener('click', toggleFullscreen);
+
+            settingsBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                settingsPanel.style.display = 'flex';
+                startBtn.style.display = 'none';
+                settingsBtn.style.display = 'none';
+            });
+
+            closeSettingsBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                settingsPanel.style.display = 'none';
+                startBtn.style.display = 'inline-block';
+                settingsBtn.style.display = 'inline-block';
+            });
+
+            sensInput.addEventListener('input', (e) => {
+                sensitivity = parseFloat(e.target.value);
+                document.getElementById('sens-val').innerText = sensitivity.toFixed(1);
+                applySettings();
+            });
+
+            gfxInput.addEventListener('change', (e) => {
+                lowGraphics = e.target.checked;
+                applySettings();
+            });
+
+            const startGameHandler = (e) => {
+                if (e && e.cancelable) e.preventDefault();
+                if (isPaused) { requestResume(); return; }
+                
+                if (!isMobile) controls.lock();
+                else {
+                    instructions.classList.add('hidden');
+                    if (!isGameRunning) { gameStartTime = performance.now(); isGameRunning = true; }
+                    setupMobileControls();
+                }
+            };
+
+            startBtn.addEventListener('click', startGameHandler);
+            if (isMobile) startBtn.addEventListener('touchstart', startGameHandler, {passive: false});
+
+            // --- FIXED CONTROLS / PAUSE LOGIC ---
+            controls.addEventListener('lock', () => {
+                instructions.classList.add('hidden');
+                isPaused = false;
+                isControlsModalOpen = false;
+                document.getElementById('controls-modal').style.display = 'none';
+                if (!isGameRunning) { gameStartTime = performance.now(); isGameRunning = true; }
+            });
+
+            controls.addEventListener('unlock', () => {
+                resetInputs(); // CRITICAL FIX: Reset WASD flags when pausing
+                if(!isMobile && isGameRunning) {
+                    isPaused = true;
+                    instructions.classList.remove('hidden');
+                    startBtn.innerText = "RESUME";
+                    settingsPanel.style.display = 'none';
+                    startBtn.style.display = 'inline-block';
+                    settingsBtn.style.display = 'inline-block';
+                }
+            });
+
+            document.addEventListener('keydown', (e) => {
+                if (e.code === 'KeyO') { toggleFullscreen(); }
+                if (e.code === 'KeyI') { toggleControlsModal(); }
+
+                if (!isPaused && isGameRunning) {
+                    switch (e.code) {
+                        case 'ArrowUp': case 'KeyW': moveForward = true; break;
+                        case 'ArrowLeft': case 'KeyA': moveLeft = true; break;
+                        case 'ArrowDown': case 'KeyS': moveBackward = true; break;
+                        case 'ArrowRight': case 'KeyD': moveRight = true; break;
+                        case 'Space': if (canJump) { velocityY = CONFIG.jumpForce; canJump = false; } break;
+                        case 'ShiftLeft': case 'ShiftRight': tryDodge(); break;
                     }
                 }
             });
-            // KONIEC MODYFIKACJI
-
-            // BLOK: OBSŁUGA LOCK/UNLOCK I MUZYKI
-            controls.addEventListener('lock', () => {
-                instructions.classList.add('hidden');
-                // WZNÓW MUZYKĘ PO POWROCIE Z PAUZY
-                if (gameMusic) gameMusic.play().catch(e => console.log('Music play failed on lock.'));
-            });
-            controls.addEventListener('unlock', () => {
-                instructions.classList.remove('hidden');
-                // ZATRZYMAJ MUZYKĘ PO WEJŚCIU W PAUZĘ
-                if (gameMusic) gameMusic.pause();
-            });
-            // KONIEC BLOKU
-
-            const onKeyDown = (event) => {
-                switch (event.code) {
-                    case 'ArrowUp': case 'KeyW': moveForward = true; break;
-                    case 'ArrowLeft': case 'KeyA': moveLeft = true; break;
-                    case 'ArrowDown': case 'KeyS': moveBackward = true; break;
-                    case 'ArrowRight': case 'KeyD': moveRight = true; break;
-                    case 'Space': if (canJump) { velocityY = CONFIG.jumpForce; canJump = false; } break;
-                    case 'KeyF': tryDodge(); break;
-                }
-            };
-            const onKeyUp = (event) => {
-                switch (event.code) {
+            document.addEventListener('keyup', (e) => {
+                switch (e.code) {
                     case 'ArrowUp': case 'KeyW': moveForward = false; break;
                     case 'ArrowLeft': case 'KeyA': moveLeft = false; break;
                     case 'ArrowDown': case 'KeyS': moveBackward = false; break;
                     case 'ArrowRight': case 'KeyD': moveRight = false; break;
                 }
-            };
-            document.addEventListener('keydown', onKeyDown);
-            document.addEventListener('keyup', onKeyUp);
-            window.addEventListener('resize', onWindowResize);
-
-            // ----- LOGIKA LORE -----
-            const loreButton = document.getElementById('lore-button');
-            const loreScreen = document.getElementById('lore-screen');
-            const loreContent = document.getElementById('lore-content');
-            const loreClose = document.getElementById('lore-close-button');
-
-            loreContent.innerHTML = LORE_TEXT; 
-
-            loreButton.addEventListener('click', (e) => {
-                e.stopPropagation(); 
-                loreScreen.classList.remove('hidden');
-            });
-
-            loreClose.addEventListener('click', () => {
-                loreScreen.classList.add('hidden');
             });
             
-            // ----- WCZYTANIE HIGH SCORE -----
+            document.getElementById('close-controls-btn').addEventListener('click', () => toggleControlsModal(false));
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
             document.getElementById('highscore-display').innerText = `HIGH: ZONE ${highScore}`;
             
-            // LOGIKA MINIMAPY/LOGO
-            const minimapContainer = document.getElementById('minimap-container');
-            const logoContainer = document.getElementById('logo-container');
-            if (CONFIG.DEV_SHOW_MINIMAP) {
-                minimapContainer.style.display = 'block';
-                logoContainer.style.display = 'none';
-            } else {
-                minimapContainer.style.display = 'none';
-                logoContainer.style.display = 'block';
-            }
-
-            regenerateLevel();
+            window.addEventListener("gamepadconnected", (e) => { if (gamepadIndex === null) gamepadIndex = e.gamepad.index; });
+            window.addEventListener("gamepaddisconnected", (e) => { if (gamepadIndex === e.gamepad.index) gamepadIndex = null; });
         }
         
-        function checkFloorPresence(px, pz) {
-            const cellX = Math.round(px / CONFIG.cellSize);
-            const cellZ = Math.round(pz / CONFIG.cellSize);
+        function handleGamepadInput(delta) {
+            if (gamepadIndex === null) return;
+            const gamepad = navigator.getGamepads()[gamepadIndex];
+            if (!gamepad) return;
 
-            if (cellX < 0 || cellX >= mazeWidth || cellZ < 0 || cellZ >= mazeHeight) {
-                return false; 
+            const lsX = gamepad.axes[0], lsY = gamepad.axes[1];
+            if (Math.sqrt(lsX * lsX + lsY * lsY) > GAMEPAD_DEADZONE) { joystick.x = lsX; joystick.y = -lsY; }
+            else { joystick.x = 0; joystick.y = 0; }
+            
+            const rsX = gamepad.axes[2], rsY = gamepad.axes[3];
+            if (Math.abs(rsX) > GAMEPAD_DEADZONE) camera.rotation.y -= rsX * GAMEPAD_LOOK_SPEED * sensitivity;
+            if (Math.abs(rsY) > GAMEPAD_DEADZONE) {
+                camera.rotation.x -= rsY * GAMEPAD_LOOK_SPEED * sensitivity;
+                camera.rotation.x = Math.max(-Math.PI/2, Math.min(Math.PI/2, camera.rotation.x));
             }
             
-            const cellType = grid[cellZ][cellX];
-            return cellType !== '#' && cellType !== 'H'; 
+            if (gamepad.buttons[0]?.pressed && !prevGamepadState['btn0'] && canJump) { velocityY = CONFIG.jumpForce; canJump = false; }
+            if (gamepad.buttons[1]?.pressed && !prevGamepadState['btn1']) tryDodge();
+            
+            if (gamepad.buttons[9]?.pressed && !prevGamepadState['btn9']) {
+                if(isControlsModalOpen) {
+                    toggleControlsModal(false);
+                } else if (isGameRunning) {
+                    if(isPaused) requestResume(); else requestPause();
+                }
+            }
+
+            prevGamepadState['btn0'] = gamepad.buttons[0]?.pressed;
+            prevGamepadState['btn1'] = gamepad.buttons[1]?.pressed;
+            prevGamepadState['btn9'] = gamepad.buttons[9]?.pressed;
+        }
+
+        function setupMobileControls() {
+            const joyBase = document.getElementById('joy-base');
+            const joyStick = document.getElementById('joy-stick');
+            const btnJump = document.getElementById('btn-jump');
+            const btnDash = document.getElementById('btn-dash');
+            const btnPause = document.getElementById('mob-pause-btn');
+            
+            let startX, startY;
+            joyBase.addEventListener('touchstart', (e) => { 
+                e.stopPropagation(); 
+                if (joyTouchId === -1) {
+                    const t = e.changedTouches[0];
+                    joyTouchId = t.identifier;
+                    startX = t.clientX; 
+                    startY = t.clientY;
+                }
+            }, {passive:false});
+
+            joyBase.addEventListener('touchmove', (e) => {
+                e.preventDefault(); e.stopPropagation();
+                if (joyTouchId === -1) return;
+
+                for (let i = 0; i < e.changedTouches.length; i++) {
+                    if (e.changedTouches[i].identifier === joyTouchId) {
+                        const t = e.changedTouches[i];
+                        const dx = t.clientX - startX, dy = t.clientY - startY;
+                        const dist = Math.min(Math.sqrt(dx*dx+dy*dy), 75);
+                        const angle = Math.atan2(dy, dx);
+                        joyStick.style.transform = `translate(calc(-50% + ${Math.cos(angle)*dist}px), calc(-50% + ${Math.sin(angle)*dist}px))`;
+                        joystick.x = (Math.cos(angle)*dist)/75; joystick.y = -(Math.sin(angle)*dist)/75;
+                        break;
+                    }
+                }
+            }, {passive:false});
+            
+            const resetJoy = (e) => { 
+                e.stopPropagation(); 
+                for (let i = 0; i < e.changedTouches.length; i++) {
+                    if (e.changedTouches[i].identifier === joyTouchId) {
+                        joyTouchId = -1;
+                        joyStick.style.transform = `translate(-50%, -50%)`; 
+                        joystick.x=0; joystick.y=0; 
+                        break;
+                    }
+                }
+            };
+            joyBase.addEventListener('touchend', resetJoy); 
+            joyBase.addEventListener('touchcancel', resetJoy);
+
+            let lastLookX, lastLookY, currentTouchId = -1;
+            renderer.domElement.addEventListener('touchstart', (e) => {
+                if(!isGameRunning || isPaused) return;
+                for(let i=0; i<e.changedTouches.length; i++) {
+                    const t = e.changedTouches[i];
+                    if(!t.target.closest('.joy-zone') && !t.target.closest('.mob-btn') && !t.target.closest('.mini-btn')) {
+                        if(currentTouchId===-1) { isLooking=true; currentTouchId=t.identifier; lastLookX=t.clientX; lastLookY=t.clientY; break; }
+                    }
+                }
+            }, {passive:false});
+            renderer.domElement.addEventListener('touchmove', (e) => {
+                if(!isLooking || currentTouchId===-1 || isPaused) return;
+                for(let i=0; i<e.changedTouches.length; i++) {
+                    if(e.changedTouches[i].identifier === currentTouchId) {
+                        e.preventDefault();
+                        const t = e.changedTouches[i];
+                        camera.rotation.y -= (t.clientX - lastLookX) * 0.005 * lookSpeed * sensitivity;
+                        camera.rotation.x -= (t.clientY - lastLookY) * 0.005 * lookSpeed * sensitivity;
+                        camera.rotation.x = Math.max(-Math.PI/2, Math.min(Math.PI/2, camera.rotation.x));
+                        lastLookX=t.clientX; lastLookY=t.clientY; break;
+                    }
+                }
+            }, {passive:false});
+            const endLook = (e) => { for(let i=0; i<e.changedTouches.length; i++) if(e.changedTouches[i].identifier === currentTouchId) { isLooking=false; currentTouchId=-1; break; } };
+            renderer.domElement.addEventListener('touchend', endLook); renderer.domElement.addEventListener('touchcancel', endLook);
+
+            btnJump.addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); if(canJump && !isPaused) { velocityY=CONFIG.jumpForce; canJump=false; } });
+            btnDash.addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); if(!isPaused) tryDodge(); });
+            btnPause.addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); if(isPaused) requestResume(); else requestPause(); });
+        }
+
+        function checkFloorPresence(px, pz) {
+            const cx = Math.round(px/CONFIG.cellSize), cz = Math.round(pz/CONFIG.cellSize);
+            if(cx<0||cx>=mazeWidth||cz<0||cz>=mazeHeight) return false;
+            return grid[cz][cx] !== '#' && grid[cz][cx] !== 'H';
         }
 
         function tryDodge() {
-            if (cooldownTimer <= 0 && !isDodging) {
-                isDodging = true;
-                dodgeTimer = CONFIG.dodgeDuration;
-                cooldownTimer = CONFIG.dodgeCooldown;
-                document.body.classList.add('phasing');
-                abilityText.innerText = ">> PHASING <<";
+            if (dashCharges > 0 && !isDodging) {
+                isDodging = true; dodgeTimer = CONFIG.dodgeDuration; dashTimer = CONFIG.dashTime;
+                dashCharges--;
+                updateDashUI();
                 
-                // --- LOGIKA DASH/UNIK Z RUCHEM ---
-                dashTimer = CONFIG.dashTime;
-                
-                const forwardVec = new THREE.Vector3(); camera.getWorldDirection(forwardVec); forwardVec.y = 0; forwardVec.normalize();
-                const rightVec = new THREE.Vector3().crossVectors(forwardVec, camera.up);
-                
-                const tempDirection = new THREE.Vector3(
-                    Number(moveRight) - Number(moveLeft),
-                    0,
-                    Number(moveForward) - Number(moveBackward)
-                ).normalize();
-                
-                dashVector.set(0, 0, 0);
-
-                if (tempDirection.length() > 0) {
-                    dashVector.addScaledVector(forwardVec, tempDirection.z);
-                    dashVector.addScaledVector(rightVec, tempDirection.x);
-                    dashVector.normalize().multiplyScalar(CONFIG.dashForce);
-                } else {
-                    dashVector.copy(forwardVec).multiplyScalar(CONFIG.dashForce);
+                if (dashCharges === (CONFIG.maxDashCharges - 1)) {
+                    dashRechargeTimer = CONFIG.dashRechargeTime;
                 }
+                
+                document.body.classList.add('phasing'); 
+                
+                const fwd = new THREE.Vector3(); camera.getWorldDirection(fwd); fwd.y=0; fwd.normalize();
+                const rgt = new THREE.Vector3().crossVectors(fwd, camera.up);
+                let ix, iz;
+                if(isMobile || gamepadIndex!==null) { ix=joystick.x; iz=joystick.y; }
+                else { ix=Number(moveRight)-Number(moveLeft); iz=Number(moveForward)-Number(moveBackward); }
+                
+                const td = new THREE.Vector3(ix,0,iz).normalize();
+                dashVector.set(0,0,0);
+                if(td.length()>0.1) { dashVector.addScaledVector(fwd, td.z); dashVector.addScaledVector(rgt, td.x); dashVector.normalize().multiplyScalar(CONFIG.dashForce); }
+                else dashVector.copy(fwd).multiplyScalar(CONFIG.dashForce);
             }
         }
 
         function updateEnvironment(lvl) {
-            const hue = (lvl * 0.15) % 1.0;
-            const color = new THREE.Color().setHSL(hue, 0.6, 0.05);
-            const fogColor = new THREE.Color().setHSL(hue, 0.6, 0.1);
-            scene.background = color;
-            scene.fog = new THREE.FogExp2(fogColor, 0.08);
-
-            const oldStars = scene.getObjectByName("SkyPoints");
-            if(oldStars) scene.remove(oldStars);
-
-            const starGeo = new THREE.BufferGeometry();
-            const starCount = 500;
-            const starPos = new Float32Array(starCount * 3);
-            for(let i=0; i<starCount*3; i++) starPos[i] = (Math.random() - 0.5) * 100;
-            starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
-            const starMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.2, transparent: true, opacity: 0.6 });
-            const stars = new THREE.Points(starGeo, starMat);
-            stars.name = "SkyPoints";
-            scene.add(stars);
-        }
-
-        function generateMazeData(w, h) {
-            let map = Array(h).fill().map(() => Array(w).fill('#'));
-            const dirs = [[0,-2], [0,2], [-2,0], [2,0]];
-            const stack = [[1, 1]];
-            map[1][1] = '.';
-
-            while(stack.length) {
-                const [cx, cy] = stack[stack.length - 1];
-                let neighbors = [];
-                for(let [dx, dy] of dirs) {
-                    const nx = cx + dx, ny = cy + dy;
-                    if(nx > 0 && nx < w-1 && ny > 0 && ny < h-1 && map[ny][nx] === '#') {
-                        neighbors.push([nx, ny, dx/2, dy/2]);
-                    }
-                }
-                if(neighbors.length) {
-                    const [nx, ny, mx, my] = neighbors[Math.floor(Math.random() * neighbors.length)];
-                    map[cy + my][cx + mx] = '.'; map[ny][nx] = '.';
-                    stack.push([nx, ny]);
-                } else {
-                    stack.pop();
-                }
+            const h = (lvl*0.15)%1.0; scene.background = new THREE.Color().setHSL(h,0.6,0.05);
+            scene.fog = new THREE.FogExp2(new THREE.Color().setHSL(h,0.6,0.1), 0.08);
+            const old = scene.getObjectByName("SkyPoints"); if(old) scene.remove(old);
+            if(!lowGraphics) {
+                const geo = new THREE.BufferGeometry(); const pos = new Float32Array(1500);
+                for(let i=0;i<1500;i++) pos[i]=(Math.random()-0.5)*100;
+                geo.setAttribute('position', new THREE.BufferAttribute(pos,3));
+                const stars = new THREE.Points(geo, new THREE.PointsMaterial({color:0xffffff, size:0.2, transparent:true, opacity:0.6}));
+                stars.name="SkyPoints"; scene.add(stars);
             }
-
-            let bestDist = 0;
-            let end = {x: 1, y: 1};
-            let emptySpaces = [];
-            for(let y=0; y<h; y++){
-                for(let x=0; x<w; x++){
-                    if(map[y][x] === '.'){
-                        emptySpaces.push({x, y});
-                        let dist = Math.sqrt((x-1)**2 + (y-1)**2);
-                        if(dist > bestDist) { bestDist = dist; end = {x, y}; }
-                    }
-                }
-            }
-            
-            // --- GENEROWANIE DZIUR (H) i POŚCIGOWCÓW (C) --- ZMIENIONO
-            for(const {x, y} of emptySpaces) {
-                if (x < 3 && y < 3) continue; 
-                if (x === end.x && y === end.y) continue;
-                
-                if (Math.random() < CONFIG.HOLE_CHANCE) {
-                    map[y][x] = 'H';
-                } 
-                // NOWA LOGIKA: Sprawdzanie poziomu przed spawnem Pościgowca
-                else if (level >= CONFIG.PURSUER_START_LEVEL && Math.random() < CONFIG.PURSUER_CHANCE && map[y][x] !== 'H') { 
-                    map[y][x] = 'C'; 
-                }
-            }
-
-            map[1][1] = 'P';
-            map[end.y][end.x] = 'G';
-
-            // --- SPAWN PRZECIWNIKÓW (TYLKO OD LVL 5) ---
-            if (level >= CONFIG.enemyStartLevel) {
-                // Nie spawnować wrogów tam, gdzie już są pościgowce
-                emptySpaces = emptySpaces.filter(p => map[p.y][p.x] !== 'H' && map[p.y][p.x] !== 'C' && !(p.x < 4 && p.y < 4) && !(p.x === end.x && p.y === end.y));
-                const numEnemies = CONFIG.enemyCountBase + Math.floor((level - 4) * 0.5);
-                
-                for(let i=0; i < numEnemies && emptySpaces.length > 0; i++) {
-                    const idx = Math.floor(Math.random() * emptySpaces.length);
-                    const pos = emptySpaces.splice(idx, 1)[0];
-                    map[pos.y][pos.x] = 'E';
-                }
-            }
-            return map;
         }
 
         function regenerateLevel() {
-            walls.forEach(w => scene.remove(w)); walls = [];
-            enemies.forEach(e => scene.remove(e.mesh)); enemies = [];
-            pursuers.forEach(p => scene.remove(p.mesh)); pursuers = []; 
+            walls.forEach(w=>scene.remove(w)); walls=[];
+            enemies.forEach(e=>scene.remove(e.mesh)); enemies=[];
             if(goalObj) scene.remove(goalObj);
 
             updateEnvironment(level);
-            grid = generateMazeData(mazeWidth, mazeHeight);
-
-            const wallTex = generateTexture('#000', 'brick');
-            const wallMat = new THREE.MeshStandardMaterial({ map: wallTex, roughness: 0.2, metalness: 0.8, emissive: 0x000505 });
             
-            const floorTex = generateTexture('#000', 'grid');
-            const floorMat = new THREE.MeshStandardMaterial({ 
-                map: floorTex, 
-                roughness: 0.5, 
-                metalness: 0.5, 
-                side: THREE.DoubleSide 
-            });
-
-            const floorTileGeo = new THREE.PlaneGeometry(CONFIG.cellSize, CONFIG.cellSize);
-            const floorTileGeoRotated = floorTileGeo.clone().rotateX(-Math.PI / 2); 
-
-            const fullFloorGeo = new THREE.PlaneGeometry(mazeWidth * CONFIG.cellSize, mazeHeight * CONFIG.cellSize);
+            // Randomly increase size slightly every 5 levels
+            const baseSize = 13 + Math.floor(level / 5) * 4;
+            grid = createRandomMaze(baseSize, baseSize);
             
-            const ceil = new THREE.Mesh(fullFloorGeo, new THREE.MeshBasicMaterial({ color: 0x000000 }));
-            ceil.rotation.x = Math.PI / 2;
-            ceil.position.set((mazeWidth * CONFIG.cellSize)/2 - CONFIG.cellSize/2, CONFIG.wallHeight, (mazeHeight * CONFIG.cellSize)/2 - CONFIG.cellSize/2);
+            mazeHeight = grid.length;
+            mazeWidth = grid[0].length;
+
+            const wMat = new THREE.MeshStandardMaterial({ map: generateTexture('#000','brick'), roughness:0.2, metalness:0.8, emissive:0x000505 });
+            const fMat = new THREE.MeshStandardMaterial({ map: generateTexture('#000','grid'), roughness:0.5, metalness:0.5, side:THREE.DoubleSide });
+            const ceil = new THREE.Mesh(new THREE.PlaneGeometry(mazeWidth*CONFIG.cellSize, mazeHeight*CONFIG.cellSize), new THREE.MeshBasicMaterial({color:0x000000}));
+            ceil.rotation.x=Math.PI/2; ceil.position.set((mazeWidth*CONFIG.cellSize)/2-CONFIG.cellSize/2, CONFIG.wallHeight, (mazeHeight*CONFIG.cellSize)/2-CONFIG.cellSize/2);
             scene.add(ceil);
 
-            const boxGeo = new THREE.BoxGeometry(CONFIG.cellSize, CONFIG.wallHeight, CONFIG.cellSize);
-            
-            // Materiały wrogów
-            const enemyRedMat = new THREE.MeshStandardMaterial({ 
-                color: 0xff0000, 
-                emissive: 0xaa0000, 
-                emissiveIntensity: 0.8,
-                wireframe: true 
-            });
-            const enemyYellowMat = new THREE.MeshStandardMaterial({ 
-                color: 0xffff00, 
-                emissive: 0x888800, 
-                emissiveIntensity: 0.8,
-                wireframe: true 
-            });
+            const boxG = new THREE.BoxGeometry(CONFIG.cellSize, CONFIG.wallHeight, CONFIG.cellSize);
+            const enGeo = new THREE.IcosahedronGeometry(0.5, 0); const enMat = new THREE.MeshStandardMaterial({color:0xff0000, emissive:0xaa0000, wireframe:true});
 
+            for(let y=0;y<mazeHeight;y++) for(let x=0;x<mazeWidth;x++) {
+                let t = grid[y][x]; 
+                const px=x*CONFIG.cellSize, pz=y*CONFIG.cellSize;
+                
+                // Randomly spawn enemy in empty spots if lvl >= 5
+                if (level >= 5 && t === '.' && Math.random() < 0.05) {
+                    t = 'E';
+                }
 
-            for (let y = 0; y < mazeHeight; y++) {
-                for (let x = 0; x < mazeWidth; x++) {
-                    const type = grid[y][x];
-                    const px = x * CONFIG.cellSize;
-                    const pz = y * CONFIG.cellSize;
-
-                    if (type === '#') {
-                        const wall = new THREE.Mesh(boxGeo, wallMat);
-                        wall.position.set(px, CONFIG.wallHeight/2, pz);
-                        wall.castShadow = true; wall.receiveShadow = true;
-                        wall.userData.bbox = new THREE.Box3().setFromObject(wall);
-                        walls.push(wall); scene.add(wall);
-                    } else if (type === 'P' || type === 'G' || type === 'E' || type === '.' || type === 'C') { 
-                        const floorTile = new THREE.Mesh(floorTileGeoRotated, floorMat);
-                        floorTile.position.set(px, 0, pz);
-                        floorTile.receiveShadow = true;
-                        walls.push(floorTile); 
-                        scene.add(floorTile);
-
-                        if (type === 'P') {
-                            camera.position.set(px, defaultCameraHeight, pz);
-                            camera.lookAt(px + 10, defaultCameraHeight, pz); 
-                        } else if (type === 'G') {
-                            const gGeo = new THREE.IcosahedronGeometry(CONFIG.cellSize * 0.3, 1);
-                            const gMat = new THREE.MeshStandardMaterial({ color: 0x00ffff, emissive: 0x0088aa, wireframe: true, transparent:true, opacity:0.8 });
-                            goalObj = new THREE.Mesh(gGeo, gMat);
-                            goalObj.position.set(px, CONFIG.wallHeight/2, pz);
-                            const gLight = new THREE.PointLight(0x00ffff, 3, 8);
-                            goalObj.add(gLight); scene.add(goalObj);
-                        } else if (type === 'E') {
-                            // Czerwony wróg (cykliczny)
-                            const enMesh = new THREE.Mesh(enemyGeo, enemyRedMat);
-                            enMesh.position.set(px, 1.5, pz);
-                            
-                            const core = new THREE.Mesh(
-                                new THREE.IcosahedronGeometry(0.2, 0),
-                                new THREE.MeshBasicMaterial({ color: 0xffffff })
-                            );
-                            enMesh.add(core);
-
-                            const eLight = new THREE.PointLight(0xff0000, 3, 6);
-                            enMesh.add(eLight);
-
-                            const isX = Math.random() > 0.5;
-                            enemies.push({
-                                mesh: enMesh,
-                                basePos: new THREE.Vector3(px, 1.5, pz),
-                                axis: isX ? 'x' : 'z',
-                                offset: 0,
-                                speed: 3 + Math.random() * 2, 
-                                range: CONFIG.cellSize * 0.4
-                            });
-                            scene.add(enMesh);
-                        } else if (type === 'C') { 
-                            // Żółty Pościgowiec (Chaser) - UŻYWA TEGO SAMEGO MODELU CO 'E'
-                            const cMesh = new THREE.Mesh(enemyGeo, enemyYellowMat);
-                            cMesh.position.set(px, 1.5, pz);
-                            
-                            const core = new THREE.Mesh(
-                                new THREE.IcosahedronGeometry(0.2, 0),
-                                new THREE.MeshBasicMaterial({ color: 0xffffff })
-                            );
-                            cMesh.add(core);
-
-                            const cLight = new THREE.PointLight(0xffff00, 2, 4);
-                            cMesh.add(cLight);
-
-                            pursuers.push({
-                                mesh: cMesh,
-                                isStunned: false,
-                                stunTimer: 0.0,
-                            });
-                            scene.add(cMesh);
-                        }
-                    } else if (type === 'H') {
-                        // Dziura - celowo nic nie dodajemy
+                if(t==='#') {
+                    const w = new THREE.Mesh(boxG, wMat); w.position.set(px, CONFIG.wallHeight/2, pz);
+                    w.castShadow=!lowGraphics; w.receiveShadow=!lowGraphics; w.userData.bbox = new THREE.Box3().setFromObject(w); walls.push(w); scene.add(w);
+                } 
+                else {
+                    if(t !== 'H') {
+                        const f = new THREE.Mesh(new THREE.PlaneGeometry(CONFIG.cellSize, CONFIG.cellSize).rotateX(-Math.PI/2), fMat);
+                        f.position.set(px,0,pz); f.receiveShadow=!lowGraphics; walls.push(f); scene.add(f);
+                    }
+                    
+                    if(t==='P') {
+                        camera.position.set(px, defaultCameraHeight, pz);
+                        // Orient player
+                        if(y > 0 && grid[y-1][x] !== '#') camera.rotation.y = Math.PI;
+                        else if(y < mazeHeight - 1 && grid[y+1][x] !== '#') camera.rotation.y = 0;
+                        else if(x < mazeWidth - 1 && grid[y][x+1] !== '#') camera.rotation.y = -Math.PI / 2;
+                        else if(x > 0 && grid[y][x-1] !== '#') camera.rotation.y = Math.PI / 2;
+                    }
+                    else if(t==='G') {
+                        goalObj = new THREE.Mesh(new THREE.IcosahedronGeometry(CONFIG.cellSize*0.3, 1), new THREE.MeshStandardMaterial({color:0x00ffff, emissive:0x0088aa, wireframe:true, transparent:true, opacity:0.8}));
+                        goalObj.position.set(px, CONFIG.wallHeight/2, pz); goalObj.add(new THREE.PointLight(0x00ffff, 3, 8)); scene.add(goalObj);
+                    } else if(t==='E') {
+                        const en = new THREE.Mesh(enGeo, enMat); en.position.set(px, 1.5, pz);
+                        en.add(new THREE.Mesh(new THREE.IcosahedronGeometry(0.2,0), new THREE.MeshBasicMaterial({color:0xffffff})));
+                        if(!lowGraphics) en.add(new THREE.PointLight(0xff0000, 3, 6));
+                        enemies.push({ 
+                            mesh: en, 
+                            state: 'SPAWNING', 
+                            timer: 1.0, 
+                            targetPos: new THREE.Vector3(px, 1.5, pz),
+                            lastKnownPlayerPos: new THREE.Vector3(),
+                            memoryTimer: 0
+                        });
+                        scene.add(en);
                     }
                 }
             }
             document.getElementById('level-display').innerText = `ZONE: ${level}`;
-        }
-
-        function drawMinimap() {
-            if (!CONFIG.DEV_SHOW_MINIMAP) return;
-            const size = 150;
-            const mapW = grid[0].length; const mapH = grid.length;
-            const cellW = size / mapW; const cellH = size / mapH;
-
-            minimapCtx.fillStyle = 'rgba(0, 10, 20, 0.8)';
-            minimapCtx.fillRect(0, 0, size, size);
-
-            for(let y=0; y<mapH; y++) {
-                for(let x=0; x<mapW; x++) {
-                    const px = x * cellW; const py = y * cellH;
-                    if(grid[y][x] === '#') {
-                        minimapCtx.fillStyle = 'rgba(0, 243, 255, 0.3)';
-                        minimapCtx.fillRect(px, py, cellW+0.5, cellH+0.5);
-                    } else if(grid[y][x] === 'G') {
-                        minimapCtx.fillStyle = '#0f0'; minimapCtx.fillRect(px, py, cellW, cellH);
-                    } else if(grid[y][x] === 'H') {
-                        minimapCtx.fillStyle = '#440000'; 
-                        minimapCtx.fillRect(px, py, cellW, cellH);
-                    } else if(grid[y][x] === 'C') { 
-                        minimapCtx.fillStyle = '#ffcc00'; 
-                        minimapCtx.fillRect(px, py, cellW, cellH);
-                    }
-                }
-            }
-            enemies.forEach(en => {
-                const ex = (en.mesh.position.x / CONFIG.cellSize) * cellW;
-                const ey = (en.mesh.position.z / CONFIG.cellSize) * cellH;
-                minimapCtx.fillStyle = '#f00'; minimapCtx.fillRect(ex-2, ey-2, 4, 4);
-            });
             
-            // Pościgowce
-            pursuers.forEach(p => { 
-                const ex = (p.mesh.position.x / CONFIG.cellSize) * cellW;
-                const ey = (p.mesh.position.z / CONFIG.cellSize) * cellH;
-                minimapCtx.fillStyle = '#ffff00'; minimapCtx.fillRect(ex-2, ey-2, 4, 4);
-            });
-            
-            const playerX = (camera.position.x / CONFIG.cellSize) * cellW;
-            const playerZ = (camera.position.z / CONFIG.cellSize) * cellH;
-            const dir = new THREE.Vector3(); camera.getWorldDirection(dir);
-            const angle = Math.atan2(dir.z, dir.x);
-
-            minimapCtx.save();
-            minimapCtx.translate(playerX, playerZ); minimapCtx.rotate(angle);
-            minimapCtx.fillStyle = '#fff';
-            minimapCtx.beginPath(); minimapCtx.moveTo(6, 0); minimapCtx.lineTo(-4, 4); minimapCtx.lineTo(-4, -4);
-            minimapCtx.fill(); minimapCtx.restore();
-        }
-
-        function checkCollision(position) {
-            const playerBox = new THREE.Box3();
-            const r = CONFIG.playerRadius;
-            // Sprawdzanie kolizji ze ścianami (wysokość dla ścian)
-            playerBox.min.set(position.x - r, position.y - 1.0, position.z - r);
-            playerBox.max.set(position.x + r, position.y + 0.5, position.z + r);
-            for (let obj of walls) {
-                if(obj.geometry.type === 'PlaneGeometry') continue; 
-                if (obj.userData.bbox && playerBox.intersectsBox(obj.userData.bbox)) return true;
+            // --- MINIMAP DEV TOGGLE LOGIC ---
+            const mmCont = document.getElementById('minimap-container');
+            if (CONFIG.DEV_SHOW_MINIMAP || level >= 15) { 
+                mmCont.style.display = 'block'; 
+            } else { 
+                mmCont.style.display = 'none'; 
             }
-            return false;
         }
-
-        function onWindowResize() {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        }
-
-        function animate() {
+        
+        function animate(time) {
             requestAnimationFrame(animate);
-            const time = performance.now();
-            const delta = (time - prevTime) / 1000;
-            prevTime = time;
+            if (isPaused) return;
 
-            if (isGameRunning && controls.isLocked) {
-                const elapsedTime = time - gameStartTime;
-                document.getElementById('timer-display').innerText = `TIME: ${formatTime(elapsedTime)}`;
-            }
+            const delta = Math.min((time - prevTime) / 1000, 0.05);
 
-            if (controls.isLocked) {
-                if(isDodging) {
-                    dodgeTimer -= delta;
-                    if(dodgeTimer <= 0) {
-                        isDodging = false;
-                        document.body.classList.remove('phasing');
-                        abilityText.innerText = "[F] RECHARGING...";
-                    }
-                } else if (cooldownTimer > 0) {
-                    cooldownTimer -= delta;
-                    const pct = 100 - ((cooldownTimer / CONFIG.dodgeCooldown) * 100);
-                    abilityFill.style.width = `${pct}%`;
-                    if(cooldownTimer <= 0) {
-                        abilityFill.style.width = '100%'; abilityText.innerText = "[F] PHASE SHIFT";
-                    }
-                }
-
-                drawMinimap();
-
-                if(goalObj) {
-                    goalObj.rotation.y += delta;
-                    goalObj.rotation.x += delta * 0.5;
-                }
-
-                // --- LOGIKA WROGÓW (CYKLICZNYCH) ---
-                enemies.forEach(en => {
-                    en.offset += en.speed * delta;
-                    const offsetVal = Math.sin(en.offset) * en.range;
-                    if(en.axis === 'x') en.mesh.position.x = en.basePos.x + offsetVal;
-                    else en.mesh.position.z = en.basePos.z + offsetVal;
-                    
-                    en.mesh.rotation.y += delta * 4; 
-                    en.mesh.rotation.x += delta * 2;
-                    const jitter = 1 + (Math.random() - 0.5) * 0.3; 
-                    en.mesh.scale.setScalar(jitter);
-
-                    // Kolizja
-                    if(!isDodging) {
-                        const dist = new THREE.Vector2(camera.position.x, camera.position.z)
-                                     .distanceTo(new THREE.Vector2(en.mesh.position.x, en.mesh.position.z));
-                        if(dist < 1.0) {
-                            document.getElementById('visor-overlay').style.backgroundColor = 'rgba(255,0,0,0.8)';
-                            setTimeout(() => {
-                                document.getElementById('visor-overlay').style.backgroundColor = '';
-                                regenerateLevel(); 
-                            }, 100);
-                        }
-                    }
-                });
+            if (isGameRunning && (controls.isLocked || isMobile || gamepadIndex !== null)) {
+                handleGamepadInput(delta);
                 
-                // --- LOGIKA POŚCIGOWCÓW ---
-                pursuers.forEach(p => {
-                    const mesh = p.mesh;
-                    
-                    // DODANE: Animacja rotacji
-                    mesh.rotation.y += delta * 2; 
-                    mesh.rotation.x += delta * 4; // Lepsza animacja dla ikosahedronu
-                    const jitter = 1 + (Math.random() - 0.5) * 0.1; // Mniejszy jitter niż dla cyklicznych
-                    mesh.scale.setScalar(jitter);
-                    
-                    if (!p.isStunned) {
-                        // Obliczenie kierunku do gracza
-                        const targetPos = new THREE.Vector3(camera.position.x, mesh.position.y, camera.position.z);
-                        const dirToPlayer = targetPos.sub(mesh.position).normalize();
-
-                        // Ruch 
-                        const newPos = mesh.position.clone().addScaledVector(dirToPlayer, CONFIG.PURSUER_SPEED * delta);
-                        
-                        // Bardzo prosta kolizja XZ ze ścianami
-                        const oldX = mesh.position.x;
-                        const oldZ = mesh.position.z;
-
-                        mesh.position.x = newPos.x;
-                        // Używamy pozycji o niższej wysokości, aby sprawdzać kolizję na poziomie ziemi
-                        if(checkCollision(new THREE.Vector3(mesh.position.x, defaultCameraHeight, mesh.position.z))) mesh.position.x = oldX; 
-                        
-                        mesh.position.z = newPos.z;
-                        if(checkCollision(new THREE.Vector3(mesh.position.x, defaultCameraHeight, mesh.position.z))) mesh.position.z = oldZ;
-                        
-                        // Kolizja z graczem
-                        if(!isDodging) {
-                            const dist = new THREE.Vector2(camera.position.x, camera.position.z)
-                                         .distanceTo(new THREE.Vector2(mesh.position.x, mesh.position.z));
-                            if(dist < 1.0) {
-                                document.getElementById('visor-overlay').style.backgroundColor = 'rgba(255,100,0,0.8)'; // Inny kolor dla pościgowca
-                                setTimeout(() => {
-                                    document.getElementById('visor-overlay').style.backgroundColor = '';
-                                    regenerateLevel(); 
-                                }, 100);
-                            }
-                        }
-                    }
-                    
-                    // Reakcja na dash
-                    if(isDodging) {
-                        const dist = new THREE.Vector2(camera.position.x, camera.position.z)
-                                     .distanceTo(new THREE.Vector2(mesh.position.x, mesh.position.z));
-                        if(dist < 1.5 && !p.isStunned) {
-                            // "Oszołomienie" - zatrzymanie pościgowca na krótki czas
-                            p.isStunned = true;
-                            p.stunTimer = 1.5; // Stun na 1.5 sekundy
-                            mesh.material.color.setHex(0xaaaaaa); // Zmiana koloru na szary/biały
-                            mesh.material.emissive.setHex(0x222222); 
-                        }
-                    }
-                    
-                    if (p.isStunned) {
-                        p.stunTimer -= delta;
-                        if(p.stunTimer <= 0) {
-                            p.isStunned = false;
-                            mesh.material.color.setHex(0xffff00);
-                            mesh.material.emissive.setHex(0x888800);
-                        }
-                    }
-                });
-                
-                // KONIEC LOGIKI POŚCIGOWCÓW
-
-                const actualSpeed = CONFIG.walkSpeed; 
-
-                direction.z = Number(moveForward) - Number(moveBackward);
-                direction.x = Number(moveRight) - Number(moveLeft);
-                direction.normalize(); 
-
-                const forwardVec = new THREE.Vector3(); const rightVec = new THREE.Vector3();
-                camera.getWorldDirection(forwardVec); forwardVec.y = 0; forwardVec.normalize();
-                rightVec.crossVectors(forwardVec, camera.up);
+                if (isMobile || gamepadIndex !== null) { direction.z = joystick.y; direction.x = joystick.x; }
+                else { direction.z = Number(moveForward) - Number(moveBackward); direction.x = Number(moveRight) - Number(moveLeft); }
+                direction.normalize();
 
                 const moveVec = new THREE.Vector3();
-                if (moveForward || moveBackward || moveLeft || moveRight) {
-                    moveVec.addScaledVector(forwardVec, direction.z);
-                    moveVec.addScaledVector(rightVec, direction.x);
-                    moveVec.normalize().multiplyScalar(actualSpeed * delta);
-                }
-
-                // --- LOGIKA DASH ---
-                if (dashTimer > 0) {
-                    dashTimer -= delta;
-                    moveVec.addScaledVector(dashVector, delta); 
-                }
-                // --- KONIEC LOGIKI DASH ---
-
-
-                if (moveVec.length() > 0) {
-                    let nextPos = camera.position.clone(); nextPos.x += moveVec.x;
-                    if (!checkCollision(nextPos)) camera.position.x += moveVec.x;
-                    nextPos = camera.position.clone(); nextPos.z += moveVec.z;
-                    if (!checkCollision(nextPos)) camera.position.z += moveVec.z;
-                }
-
-                velocityY -= CONFIG.gravity * delta;
-                camera.position.y += velocityY * delta;
-
-                // --- LOGIKA LĄDOWANIA I SPADANIA ---
-                const isOverFloor = checkFloorPresence(camera.position.x, camera.position.z);
-
-                if (camera.position.y < CONFIG.FALL_HEIGHT) {
-                    document.getElementById('visor-overlay').style.backgroundColor = 'rgba(255,0,0,0.8)';
-                    setTimeout(() => {
-                        document.getElementById('visor-overlay').style.backgroundColor = '';
-                        regenerateLevel(); 
-                    }, 100);
+                if (dashTimer > 0) { dashTimer -= delta; moveVec.copy(dashVector).multiplyScalar(delta); }
+                else {
+                    const fwd = new THREE.Vector3(); camera.getWorldDirection(fwd); fwd.y=0; fwd.normalize();
+                    const rgt = new THREE.Vector3().crossVectors(fwd, camera.up);
+                    if(direction.length()>0.1) {
+                        const mz = direction.z * CONFIG.walkSpeed * delta, mx = direction.x * CONFIG.walkSpeed * delta;
+                        moveVec.addScaledVector(fwd, mz).addScaledVector(rgt, mx);
+                    }
                 }
                 
-                if (isOverFloor && camera.position.y <= defaultCameraHeight) {
-                    camera.position.y = defaultCameraHeight; 
-                    velocityY = 0; 
-                    canJump = true;
-                    if (moveVec.length() > 0) {
-                        bobTimer += actualSpeed * delta * 2;
-                        camera.position.y = defaultCameraHeight + Math.sin(bobTimer) * CONFIG.viewBobHeight;
+                velocityY -= CONFIG.gravity * delta; 
+                camera.position.y += velocityY * delta; 
+                
+                if (checkFloorPresence(camera.position.x, camera.position.z)) {
+                    if (camera.position.y < defaultCameraHeight) { 
+                        camera.position.y = defaultCameraHeight; 
+                        velocityY = 0; 
+                        canJump = true; 
                     }
-                } else if (!isOverFloor && camera.position.y < defaultCameraHeight) {
+                } else {
                     canJump = false;
+                    if (camera.position.y < CONFIG.FALL_HEIGHT) { 
+                        level=1; 
+                        regenerateLevel(); 
+                        return; 
+                    }
                 }
                 
-                if (camera.position.y > defaultCameraHeight || !isOverFloor) {
-                    bobTimer = 0;
-                }
-                // --- KONIEC LOGIKI LĄDOWANIA I SPADANIA ---
+                const cur = camera.position.clone();
+                camera.position.x += moveVec.x;
+                playerCollider.setFromCenterAndSize(new THREE.Vector3(camera.position.x, cur.y-0.8, cur.z), new THREE.Vector3(0.8, defaultCameraHeight, 0.8));
+                for(const w of walls) if(w.geometry.type==='BoxGeometry' && playerCollider.intersectsBox(w.userData.bbox)) { camera.position.x -= moveVec.x; break; }
 
-                // SPRAWDZANIE HIGH SCORE
-                if(goalObj) {
-                    const dist = new THREE.Vector2(camera.position.x, camera.position.z).distanceTo(new THREE.Vector2(goalObj.position.x, goalObj.position.z));
-                    if(dist < 1.5) {
-                        level++;
+                camera.position.z += moveVec.z;
+                playerCollider.setFromCenterAndSize(new THREE.Vector3(camera.position.x, cur.y-0.8, camera.position.z), new THREE.Vector3(0.8, defaultCameraHeight, 0.8));
+                for(const w of walls) if(w.geometry.type==='BoxGeometry' && playerCollider.intersectsBox(w.userData.bbox)) { camera.position.z -= moveVec.z; break; }
 
-                        if (level > highScore) {
-                            highScore = level;
-                            localStorage.setItem('protoMazeHighScore', highScore);
-                            document.getElementById('highscore-display').innerText = `HIGH: ZONE ${highScore}`;
+                if (isDodging) { dodgeTimer -= delta; if(dodgeTimer<=0) { isDodging=false; document.body.classList.remove('phasing'); } }
+                
+                if (dashCharges < CONFIG.maxDashCharges) {
+                    dashRechargeTimer -= delta;
+                    
+                    if (dashRechargeTimer <= 0) {
+                        dashCharges++;
+                        if (dashCharges < CONFIG.maxDashCharges) {
+                            dashRechargeTimer = CONFIG.dashRechargeTime;
+                        } else {
+                            dashRechargeTimer = 0;
                         }
-
-                        if(level % 2 === 0) { mazeWidth += 2; mazeHeight += 2; }
-                        regenerateLevel();
                     }
+                    updateDashUI();
+                }
+
+                if (direction.length() > 0.1) { bobTimer += delta * CONFIG.viewBobSpeed; if (canJump) camera.position.y = defaultCameraHeight + Math.sin(bobTimer) * CONFIG.viewBobHeight; }
+                else bobTimer = 0;
+
+                updateEnemies(delta);
+
+                if (goalObj && playerCollider.intersectsBox(new THREE.Box3().setFromObject(goalObj))) {
+                    level++; if(level>highScore) { highScore=level; localStorage.setItem('protoMazeHighScore', highScore); document.getElementById('highscore-display').innerText = `HIGH: ZONE ${highScore}`; }
+                    regenerateLevel(); return;
                 }
             }
+
+            if (goalObj) { goalObj.rotation.x += delta * 0.2; goalObj.rotation.y += delta * 0.5; }
+
+            if (isGameRunning) document.getElementById('timer-display').innerText = `TIME: ${formatTime(Math.floor(performance.now() - gameStartTime))}`;
+
+            if (CONFIG.DEV_SHOW_MINIMAP || level >= 15) {
+                minimapCtx.fillStyle = '#001122'; minimapCtx.fillRect(0,0,150,150);
+                const s = 150/(Math.max(mazeWidth,mazeHeight)*CONFIG.cellSize);
+                walls.forEach(w=>{ minimapCtx.fillStyle=w.geometry.type==='BoxGeometry'?'#00f3ff':'#004455'; minimapCtx.fillRect(w.position.x*s-CONFIG.cellSize*s/2, w.position.z*s-CONFIG.cellSize*s/2, CONFIG.cellSize*s, CONFIG.cellSize*s); });
+                minimapCtx.fillStyle='#ff0040'; minimapCtx.fillRect(camera.position.x*s-2, camera.position.z*s-2, 4, 4);
+                
+                if(goalObj) {
+                    minimapCtx.fillStyle='#00ff00';
+                    minimapCtx.fillRect(goalObj.position.x*s-3, goalObj.position.z*s-3, 6, 6);
+                }
+                
+                enemies.forEach(e => {
+                    minimapCtx.fillStyle='#ff0000';
+                    minimapCtx.beginPath();
+                    minimapCtx.arc(e.mesh.position.x*s, e.mesh.position.z*s, 3, 0, Math.PI*2);
+                    minimapCtx.fill();
+                });
+            }
             renderer.render(scene, camera);
+            prevTime = time;
+        }
+
+        function updateEnemies(delta) {
+            const playerPos = camera.position.clone();
+            const speed = 3.5;
+
+            enemies.forEach(e => {
+                if (e.state === 'SPAWNING') {
+                    e.timer -= delta;
+                    if (e.timer <= 0) {
+                        e.state = 'IDLE';
+                        e.timer = 2.0 + Math.random();
+                    }
+                    return;
+                }
+                
+                const distToPlayer = e.mesh.position.distanceTo(playerPos);
+                const gridX = Math.round(e.mesh.position.x / CONFIG.cellSize);
+                const gridZ = Math.round(e.mesh.position.z / CONFIG.cellSize);
+                
+                let visible = false;
+                if (distToPlayer < 15) { 
+                    const dir = playerPos.clone().sub(e.mesh.position).normalize();
+                    const raycaster = new THREE.Raycaster(e.mesh.position, dir, 0, distToPlayer);
+                    const hits = raycaster.intersectObjects(walls);
+                    if (hits.length === 0) visible = true; 
+                }
+
+                if (visible) {
+                    e.state = 'CHASE';
+                    e.memoryTimer = 0.5;
+                    e.lastKnownPlayerPos.copy(playerPos);
+                } else if (e.memoryTimer > 0) {
+                    e.state = 'SEARCHING';
+                    e.memoryTimer -= delta;
+                } else {
+                    e.state = 'IDLE';
+                }
+
+                let target = null;
+                if (e.state === 'CHASE' || e.state === 'SEARCHING') {
+                    target = e.lastKnownPlayerPos;
+                } else {
+                    if (e.mesh.position.distanceTo(e.targetPos) < 0.5 || e.timer <= 0) {
+                        e.timer = 2.0 + Math.random();
+                        const dirs = [{x:1,z:0}, {x:-1,z:0}, {x:0,z:1}, {x:0,z:-1}];
+                        const d = dirs[Math.floor(Math.random()*dirs.length)];
+                        const nx = gridX + d.x; const nz = gridZ + d.z;
+                        if (nx>=0 && nx<mazeWidth && nz>=0 && nz<mazeHeight && grid[nz][nx] !== '#') {
+                            e.targetPos.set(nx*CONFIG.cellSize, 1.5, nz*CONFIG.cellSize);
+                        }
+                    }
+                    target = e.targetPos;
+                    e.timer -= delta;
+                }
+
+                const moveDir = target.clone().sub(e.mesh.position);
+                moveDir.y = 0; 
+                if (moveDir.length() > 0.1) {
+                    moveDir.normalize();
+                    const step = moveDir.multiplyScalar(speed * delta);
+                    
+                    const nextX = e.mesh.position.x + step.x;
+                    const nextZ = e.mesh.position.z + step.z;
+                    
+                    const checkX = Math.round(nextX / CONFIG.cellSize);
+                    const checkZ = Math.round(e.mesh.position.z / CONFIG.cellSize);
+                    if(checkX>=0 && checkX<mazeWidth && checkZ>=0 && checkZ<mazeHeight && grid[checkZ][checkX]!=='#') {
+                        e.mesh.position.x = nextX;
+                    }
+
+                    const checkZ2 = Math.round(nextZ / CONFIG.cellSize);
+                    const checkX2 = Math.round(e.mesh.position.x / CONFIG.cellSize);
+                    if(checkZ2>=0 && checkZ2<mazeHeight && checkX2>=0 && checkX2<mazeWidth && grid[checkZ2][checkX2]!=='#') {
+                        e.mesh.position.z = nextZ;
+                    }
+                    
+                    e.mesh.lookAt(e.mesh.position.clone().add(moveDir));
+                }
+
+                if (distToPlayer < 0.8 && !isDodging) {
+                    level = 1; regenerateLevel();
+                }
+            });
         }
     </script>
 </body>
 </html>
-
-
