@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0"> 
-    <title>PROTO MAZE v3.2 - STABLE</title>
+    <title>PROTO MAZE v3.3 - AUDIO ENABLED</title>
     <style>
         body { margin: 0; overflow: hidden; background: #000; font-family: 'Courier New', monospace; touch-action: none; user-select: none; -webkit-user-select: none; }
         :root {
@@ -186,10 +186,8 @@
     </style>
 </head>
 <body>
-    <audio>
-        <audio id="game-music" loop>
+    <audio id="game-music" loop style="display:none;">
         <source src="proto_maze.mp3" type="audio/mpeg">
-        Twoja przeglądarka nie obsługuje elementu audio.
     </audio>
 
     <div id="mobile-top-ui">
@@ -334,6 +332,7 @@
         let lowGraphics = false;
         
         const playerCollider = new THREE.Box3();
+        let gameMusic;
 
         function formatTime(ms) {
             const m = Math.floor(ms / 60000);
@@ -477,6 +476,7 @@
             else {
                 isPaused = true;
                 resetInputs(); // Manually reset for mobile if needed
+                if(gameMusic) gameMusic.pause();
                 const centerInfo = document.getElementById('center-info');
                 centerInfo.classList.remove('hidden');
                 document.getElementById('start-btn').innerText = "RESUME";
@@ -487,6 +487,7 @@
             if (!isMobile) controls.lock(); // This triggers the 'lock' event which handles UI
             else {
                 isPaused = false;
+                if(gameMusic) gameMusic.play().catch(e=>console.log(e));
                 document.getElementById('center-info').classList.add('hidden');
             }
         }
@@ -558,6 +559,9 @@
             const gfxInput = document.getElementById('gfx-input');
             const closeSettingsBtn = document.getElementById('close-settings-btn');
             
+            gameMusic = document.getElementById('game-music');
+            gameMusic.volume = 0.5;
+
             barSegments = [
                 document.getElementById('bar-seg-1'),
                 document.getElementById('bar-seg-2'),
@@ -595,6 +599,12 @@
 
             const startGameHandler = (e) => {
                 if (e && e.cancelable) e.preventDefault();
+                
+                // --- ATTEMPT AUDIO START ---
+                if(gameMusic && gameMusic.paused) {
+                    gameMusic.play().catch(err => console.log("Audio autoplay prevented", err));
+                }
+
                 if (isPaused) { requestResume(); return; }
                 
                 if (!isMobile) controls.lock();
@@ -612,6 +622,7 @@
             controls.addEventListener('lock', () => {
                 instructions.classList.add('hidden');
                 isPaused = false;
+                if(gameMusic) gameMusic.play().catch(e=>{}); // Resume music
                 isControlsModalOpen = false;
                 document.getElementById('controls-modal').style.display = 'none';
                 if (!isGameRunning) { gameStartTime = performance.now(); isGameRunning = true; }
@@ -621,6 +632,7 @@
                 resetInputs(); // CRITICAL FIX: Reset WASD flags when pausing
                 if(!isMobile && isGameRunning) {
                     isPaused = true;
+                    if(gameMusic) gameMusic.pause(); // Pause music
                     instructions.classList.remove('hidden');
                     startBtn.innerText = "RESUME";
                     settingsPanel.style.display = 'none';
@@ -1093,4 +1105,3 @@
     </script>
 </body>
 </html>
-
